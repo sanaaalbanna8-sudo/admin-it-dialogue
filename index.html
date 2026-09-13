@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>طاولة القرار | أكاديمية ساندس الوطنية</title>
+  <meta name="description" content="لقاء تفاعلي أشبه بمقابلة بين الإدارة العامة وقسم تكنولوجيا المعلومات." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Cairo:wght@400;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=start1" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="glow glow-admin"></div>
+    <div class="glow glow-tech"></div>
+    <div class="gridline"></div>
+  </div>
+
+  <header class="topbar">
+    <button class="ghost" type="button" data-open-map>خريطة اللقاء</button>
+    <div class="brand">
+      <img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" />
+      <div>
+        <strong>طاولة القرار</strong>
+        <span data-chapter>أكاديمية ساندس الوطنية</span>
+      </div>
+    </div>
+    <div class="top-tools">
+      <time data-clock>00:00</time>
+      <span class="count" data-slide-count>1 / 1</span>
+      <span class="role-chip" data-role></span>
+      <button class="ghost icon-btn" type="button" data-mute aria-label="كتم الصوت" title="الصوت">
+        <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a8 8 0 0 1 0 12"/></svg>
+        <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+      </button>
+      <button class="ghost" type="button" data-fs>ملء الشاشة</button>
+    </div>
+  </header>
+
+  <div class="rail" aria-hidden="true"><i data-progress></i></div>
+
+  <main id="app" class="app" tabindex="0"></main>
+
+  <div class="mark" aria-hidden="true">طاولة القرار</div>
+  <div class="ticker" aria-hidden="true"><div class="ticker-track" data-ticker></div></div>
+
+  <footer class="dock">
+    <button type="button" data-prev>السابق</button>
+    <button type="button" class="accent" data-next>التالي</button>
+  </footer>
+
+  <aside class="overlay" data-overlay hidden aria-hidden="true">
+    <div class="overlay-card" role="dialog" aria-labelledby="map-title">
+      <div class="overlay-head">
+        <h2 id="map-title">خريطة اللقاء</h2>
+        <button type="button" class="ghost" data-close-map>إغلاق</button>
+      </div>
+      <div class="map-grid" data-map-grid></div>
+    </div>
+  </aside>
+
+  <script src="js/data.js?v=gas1"></script>
+  <script src="js/app.js?v=start2"></script>
+</body>
+</html>

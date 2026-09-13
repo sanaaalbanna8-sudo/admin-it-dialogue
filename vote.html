@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>صوّت | طاولة القرار</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: Cairo, sans-serif;
+      background:
+        radial-gradient(80% 50% at 80% 0%, rgba(201,165,106,.18), transparent 50%),
+        linear-gradient(180deg, #10151e, #07090e);
+      color: #fff8ea; padding: 22px 16px 28px;
+    }
+    .top { text-align: center; margin-bottom: 10px; }
+    .crest {
+      width: 92px; height: 92px; margin: 0 auto 10px; border-radius: 50%;
+      display: grid; place-items: center; background: #fff;
+      border: 3px solid #d4a017;
+      box-shadow: 0 0 0 5px rgba(15, 44, 89, 0.45), 0 8px 20px rgba(0,0,0,.35);
+    }
+    .crest img { width: 58px; height: auto; display: block; }
+    .brand { color: #c9a56a; letter-spacing: .16em; font-weight: 900; font-size: .78rem; }
+    h1 { margin: 8px 0 6px; font-size: 1.15rem; font-weight: 800; }
+    .q { font-size: 1.32rem; line-height: 1.65; font-weight: 900; margin: 10px 0 18px; }
+    .wait, .ok, .closed { text-align: center; padding: 56px 12px; font-weight: 800; font-size: 1.2rem; animation: rise .45s ease; }
+    .wait, .ok { color: #8fd4d8; }
+    .closed { color: #ffb4a8; }
+    .clock {
+      font-size: 3rem; color: #ff6b5a; margin-bottom: 8px; font-weight: 900;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { transform: scale(1.08); text-shadow: 0 0 18px rgba(255,107,90,.45); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    .grid { display: grid; gap: 12px; }
+    button.opt {
+      display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center;
+      min-height: 78px; padding: 14px 16px; border: 0; border-radius: 18px;
+      color: #fff; font: inherit; font-weight: 800; text-align: right; cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+      transition: transform .15s ease, filter .15s ease;
+    }
+    button.opt:active { transform: scale(.97); filter: brightness(1.12); }
+    button.opt b {
+      width: 52px; height: 52px; border-radius: 14px; background: rgba(0,0,0,.22);
+      display: grid; place-items: center; font-size: 1.35rem;
+    }
+    .meta { color: #c9b89a; font-size: .85rem; margin-top: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
+    <div class="brand">طاولة القرار</div>
+    <h1>أكاديمية ساندس الوطنية</h1>
+  </div>
+  <div id="app"></div>
+  <script src="js/data.js"></script>
+  <script>
+    const LETTERS = ["أ", "ب", "ج", "د", "هـ"];
+    const COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c", "#864cbf"];
+    const app = document.getElementById("app");
+    const voter = localStorage.getItem("mng-voter") || (localStorage.setItem("mng-voter", crypto.randomUUID()), localStorage.getItem("mng-voter"));
+    let lastId = "";
+    let votedFor = "";
+    let screen = "";
+    let audio;
+
+    function beep() {
+      try {
+        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        if (audio.state === "suspended") audio.resume();
+        const o = audio.createOscillator();
+        const g = audio.createGain();
+        o.type = "triangle";
+        o.frequency.value = 740;
+        g.gain.setValueAtTime(0.04, audio.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.09);
+        o.connect(g); g.connect(audio.destination);
+        o.start(); o.stop(audio.currentTime + 0.09);
+      } catch { /* ignore */ }
+    }
+    function gasUrl() { return (SHOW.vote && SHOW.vote.gasUrl) || localStorage.getItem("vote-gas") || ""; }
+    function jsonp(url, params) {
+      return new Promise((resolve, reject) => {
+        const cb = "kcb" + Math.random().toString(36).slice(2);
+        const q = new URLSearchParams({ ...params, callback: cb });
+        const s = document.createElement("script");
+        const t = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 8000);
+        function cleanup() { clearTimeout(t); delete window[cb]; s.remove(); }
+        window[cb] = (data) => { cleanup(); resolve(data); };
+        s.onerror = () => { cleanup(); reject(new Error("net")); };
+        s.src = url + (url.includes("?") ? "&" : "?") + q;
+        document.body.appendChild(s);
+      });
+    }
+    async function state() {
+      const gas = gasUrl();
+      if (gas) return jsonp(gas, { action: "state" });
+      const res = await fetch("/api/state", { cache: "no-store" });
+      if (!res.ok) throw new Error("state");
+      return res.json();
+    }
+    async function sendVote(id, choice) {
+      const gas = gasUrl();
+      if (gas) return jsonp(gas, { action: "vote", q: id, choice, voter });
+      await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: id, choice, voter }),
+      });
+    }
+    function isOpen(data) {
+      return Boolean(data.active && data.open && Number(data.remaining || 0) > 0);
+    }
+    function isArmed(data) {
+      return Boolean(data.active && (data.armed || data.active.armed) && !isOpen(data));
+    }
+    function paint(data) {
+      if (!data.active) {
+        lastId = "";
+        votedFor = "";
+        if (screen === "wait") return;
+        screen = "wait";
+        app.innerHTML = '<div class="wait">انتظروا هنا.<br>السؤال يظهر لوحده عند بدء الجولة.</div><p class="meta">افتحوا الرابط مرة واحدة وابقوا على الصفحة.</p>';
+        return;
+      }
+      if (data.active.id !== lastId) { lastId = data.active.id; votedFor = ""; screen = ""; }
+      if (votedFor === data.active.id) {
+        if (screen === "ok") return;
+        screen = "ok";
+        app.innerHTML = '<div class="ok">وُسِم صوتكم.<br>شاهدوا النسب وهي تتحرك على الشاشة.</div>';
+        return;
+      }
+      if (isArmed(data)) {
+        const key = "ready:" + data.active.id;
+        if (screen === key) return;
+        screen = key;
+        app.innerHTML = '<p class="q"></p><div class="wait">انتظروا إشارة المضيفة.<br>سيبدأ التصويت بعد قليل.</div>';
+        app.querySelector(".q").textContent = data.active.q;
+        return;
+      }
+      if (!isOpen(data)) {
+        if (screen === "closed") return;
+        screen = "closed";
+        app.innerHTML = '<div class="closed">انتهى التصويت.<br>ارفعوا عيونكم إلى الشاشة.</div>';
+        return;
+      }
+      const key = "q:" + data.active.id;
+      if (screen !== key) {
+        screen = key;
+        app.innerHTML = '<div class="clock" data-left></div><p class="q"></p><div class="grid" id="opts"></div>';
+        app.querySelector(".q").textContent = data.active.q;
+        data.active.options.forEach((label, i) => {
+          const b = document.createElement("button");
+          b.className = "opt";
+          b.style.background = COLORS[i % COLORS.length];
+          b.innerHTML = `<b>${LETTERS[i]}</b><span></span>`;
+          b.querySelector("span").textContent = label;
+          b.onclick = async () => {
+            beep();
+            votedFor = data.active.id;
+            await sendVote(data.active.id, label);
+            paint({ ...data, active: data.active, open: true, remaining: 1 });
+          };
+          document.getElementById("opts").appendChild(b);
+        });
+      }
+      const clock = app.querySelector("[data-left]");
+      if (clock) clock.textContent = data.remaining;
+    }
+    async function tick() {
+      try { paint(await state()); }
+      catch { if (screen !== "err") { screen = "err"; app.innerHTML = '<div class="wait">نحاول الاتصال بالعرض…</div>'; } }
+    }
+    tick();
+    setInterval(tick, 700);
+  </script>
+</body>
+</html>
