@@ -26,6 +26,10 @@
 
   function synced() { return Boolean(gasUrl()); }
   function canDrive() { return HOST || !synced(); }
+  function roundCount() { return SLIDES.filter((s) => s.type === "round").length; }
+  function arDigits(n) {
+    return String(n).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
+  }
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORAGE) || ""); } catch { return null; }
@@ -184,7 +188,7 @@
             <span>امسحوا للتصويت</span>
           </aside>
           <div>
-            <div class="kicker">٢٣ جولة</div>
+            <div class="kicker">${arDigits(roundCount())} جولة</div>
             <h1>خريطة الطاولة</h1>
             <p class="lead">اقفزوا إلى أي محور. الجمهور يصوّت أولاً ثم يتكلم الضيفان.</p>
             <div class="map-page">${ACTS.map((a) => `
@@ -276,7 +280,7 @@
             <div class="axis"><i></i><span>المحور</span><strong>${r.act}</strong></div>
             <h2>${r.title}</h2>
           </div>
-          <small>الجولة ${String(SLIDES.filter((s) => s.type === "round").findIndex((s) => s.id === id) + 1).padStart(2, "0")} من ٢٣</small>
+          <small>الجولة ${String(SLIDES.filter((s) => s.type === "round").findIndex((s) => s.id === id) + 1).padStart(2, "0")} من ${arDigits(roundCount())}</small>
         </div>
         <div class="split">
           <article class="pane admin">
