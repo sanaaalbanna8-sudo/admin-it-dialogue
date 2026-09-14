@@ -135,7 +135,7 @@
     }
     clearInterval(pollTimer);
     app.dataset.dir = slideDir > 0 ? "next" : "prev";
-    if (canDrive() && slide.type !== "round") clearPoll();
+    if (canDrive() && slide.type !== "round" && slide.type !== "finale") clearPoll();
 
     if (slide.type === "title") app.innerHTML = titleView();
     else if (slide.type === "map") app.innerHTML = mapView();
@@ -151,7 +151,7 @@
   function chapterOf(slide) {
     if (slide.type === "title") return SHOW.school;
     if (slide.type === "map") return "خريطة اللقاء";
-    if (slide.type === "finale") return "الختام";
+    if (slide.type === "finale") return "سؤال الختام";
     return ROUNDS[slide.id].act;
   }
 
@@ -301,23 +301,36 @@
   }
 
   function finaleView() {
+    const poll = POLLS.finale;
+    const cols = poll.options.map((opt, i) => `
+      <div class="v-col" data-opt="${escapeHtml(opt)}" style="--k:${KAHOOT[i % KAHOOT.length]}">
+        <b data-pct data-n="0">٠٪</b>
+        <div class="v-shaft">
+          <i></i>
+          <div class="v-foot"><em>${LETTERS[i]}</em><span>${opt}</span></div>
+        </div>
+      </div>`).join("");
     return `
-      <section class="slide finale">
+      <section class="slide finale finale-vote">
         <div class="finale-photo" aria-hidden="true"></div>
-        <div class="crest finale-crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
-        <strong class="school-name">${SHOW.school}</strong>
-        <div class="kicker">نغلق الميكروفون ولا نغلق السؤال</div>
-        <h1>الطاولة تبقى مفتوحة</h1>
-        <p class="lead finale-lead">الطلاب لم يشهدوا خلافاً بين قسمين، بل شاهدوا أكاديمية ساندس الوطنية تُدار: قرار يُعلن، تقنية ترد، ورقم يتحرك وهو يُقال.</p>
-        <div class="take">
-          <div class="a">
-            <span class="role-kicker">الإدارة العامة</span>
-            <h3>يمكن أن يكون القائد رقمياً دون أن يتقن كل الأدوات.<br>يكون القائد رقمياً عندما يعي أثر ما يوقّع عليه.</h3>
+        <div class="finale-top">
+          <div class="crest finale-crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
+          <strong class="school-name">${SHOW.school}</strong>
+          <div class="finale-badge">سؤال الختام</div>
+        </div>
+        <p class="finale-q">${poll.q}</p>
+        <div class="kahoot finale-kahoot is-ready" data-poll="finale">
+          <div class="k-head">
+            <div class="k-clock"><strong data-k-clock>${SHOW.vote.seconds}</strong><small>ثانية</small></div>
+            <div>
+              <div class="on-air" data-air><i></i> انتظار</div>
+              <h3>أين تضعون الثقل الأكبر؟</h3>
+            </div>
+            <div class="k-live"><strong data-k-total>٠</strong><small>صوت حي</small></div>
           </div>
-          <div class="t">
-            <span class="role-kicker">تكنولوجيا المعلومات</span>
-            <h3>الأداة تشيخ، ولكن العقلية التي تتعلم أسرع من الأداة لا تُستبدل أبداً.</h3>
-          </div>
+          <div class="v-grid" style="--n:2">${cols}</div>
+          ${canDrive() ? `<button type="button" class="vote-go" data-start-vote>ابدأ التصويت</button>` : ""}
+          <p class="k-wait">سؤال الختام للطالبات. اضغطوا ابدأ التصويت عندما تكون القاعة جاهزة.</p>
         </div>
       </section>`;
   }
