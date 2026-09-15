@@ -1,12 +1,11 @@
-/* إعداد Firebase — الصقي هنا قيم مشروعك من Firebase Console.
-   الخطوات في ملف: FIREBASE-خطوات.txt
-   طالما apiKey فيها كلمة PASTE لن يُفعَّل Firebase وسيبقى النظام على الوضع القديم. */
+/* إعداد Firebase — مشروع Presentation */
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://PASTE_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID",
+  apiKey: "AIzaSyDqo-AyryLhYPAIBrPy-O15S6W_9HkRbPY",
+  authDomain: "presentation-e045c.firebaseapp.com",
+  databaseURL: "https://presentation-e045c-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "presentation-e045c",
+  storageBucket: "presentation-e045c.firebasestorage.app",
+  messagingSenderId: "1045605012124",
+  appId: "1:1045605012124:web:d465bce3fe7a3743cdd359",
+  measurementId: "G-30Y807CQG1",
 };
