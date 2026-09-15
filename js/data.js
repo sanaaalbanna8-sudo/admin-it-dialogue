@@ -11,9 +11,10 @@ const SHOW = {
   vote: {
     pin: "4826",
     seconds: 12,
+    // احتياطي قديم — بعد تفعيل Firebase لن يُستخدم للـ QR
     gasUrl: "https://script.google.com/macros/s/AKfycbyxxAB99a_5ZIoKbaiszRinn_0z0UBWpKWEbTIC7tdHxJLszyqoj0dO1KTZgMnQ3AcfHA/exec",
     pagesUrl: "https://sanaaalbanna8-sudo.github.io/admin-it-dialogue/",
-    joinHint: "ابعثوا هذا الرابط مرة واحدة. يشتغل من بيانات الجوال.",
+    joinHint: "امسحوا الـ QR أو افتحوا رابط التصويت مرة واحدة وابقوا على الصفحة.",
   },
   ticker: [
     "مواجهة رقمية: بين لغة الإدارة.. ولغة الأكواد · أكاديمية ساندس الوطنية",

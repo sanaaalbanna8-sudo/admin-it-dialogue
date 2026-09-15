@@ -1,0 +1,69 @@
+خطوات تفعيل السرعة اللحظية (Firebase) — طاولة القرار
+=====================================================
+
+لماذا؟
+------
+Google Apps Script كان يُسأل عشرات المرات كل ثانية من كل جوال وشاشة، فيتأخر.
+Firebase يفتح قناة حية واحدة: أي صوت يظهر على الشاشة خلال أجزاء من الثانية.
+
+ماذا ستفعلين مرة واحدة (٥–١٠ دقائق):
+--------------------------------
+
+١) ادخلي: https://console.firebase.google.com
+   وسجّلي بنفس حساب Google الخاص بكِ.
+
+٢) Create a project → اسم مقترح: sands-table-decision
+   عطّلي Google Analytics إن ظهر (اختياري) → Create project.
+
+٣) من القائمة اليسرى: Build → Realtime Database → Create Database
+   اختري أقرب موقع متاح → ابدئي بـ Start in test mode
+   (للعرض المدرسي ليوم واحد هذا مناسب).
+
+٤) من أعلى الصفحة: Project settings (ترس) → Your apps → Web </> 
+   سجّلي تطبيقاً باسم: table-decision
+   انسخي كائن firebaseConfig الذي يظهر.
+
+٥) افتحي الملف في المشروع:
+   js/firebase-config.js
+   والصقي القيم بدل PASTE_...
+
+   مثال الشكل النهائي:
+   window.FIREBASE_CONFIG = {
+     apiKey: "AIza...",
+     authDomain: "xxx.firebaseapp.com",
+     databaseURL: "https://xxx-default-rtdb.firebaseio.com",
+     projectId: "xxx",
+     storageBucket: "xxx.appspot.com",
+     messagingSenderId: "123...",
+     appId: "1:123:web:abc..."
+   };
+
+٦) قواعد الأمان (مهم):
+   Realtime Database → Rules → الصقي:
+
+{
+  "rules": {
+    "tableDecision": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+
+ثم Publish.
+
+٧) ارفعي التعديلات على GitHub (أو قولي للمساعد: github)
+   رابط التصويت للجمهور يصبح:
+   https://sanaaalbanna8-sudo.github.io/admin-it-dialogue/vote.html
+
+٨) تجربة سريعة:
+   - شاشة: نفس رابط GitHub
+   - مضيفة: نفس الرابط + ?host=1
+   - جوال: رابط vote.html
+   اضغطي ابدأ التصويت → النسبة لازم تتحرك فوراً.
+
+ملاحظات يوم العرض:
+------------------
+- الجمهور على بيانات الجوال أفضل من واي فاي المدرسة المزدحم.
+- المضيفة + الشاشة التفاعلية على إنترنت مستقر.
+- لا تفتحي أكثر من مضيفة واحدة (?host=1).
