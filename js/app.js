@@ -21,10 +21,13 @@
   const started = Date.now();
   let audio;
   let pollTimer;
+  let pollUnsub = null;
+  let showUnsub = null;
   let pushing = false;
   let slideDir = 1;
 
-  function synced() { return Boolean(gasUrl()); }
+  function liveOn() { return Boolean(window.Live && Live.ready()); }
+  function synced() { return liveOn() || Boolean(gasUrl()); }
   function canDrive() { return HOST || !synced(); }
   function roundCount() { return SLIDES.filter((s) => s.type === "round").length; }
   function arDigits(n) {
@@ -49,6 +52,11 @@
     return (SHOW.vote && SHOW.vote.gasUrl) || localStorage.getItem("vote-gas") || "";
   }
   function joinUrl() {
+    // مع Firebase: الجوالات تدخل على vote.html من GitHub Pages (أسرع من GAS)
+    if (window.Live && Live.configured()) {
+      const base = (SHOW.vote.pagesUrl || `${location.origin}/`).replace(/\/?$/, "/");
+      return `${base}vote.html`;
+    }
     return gasUrl() || SHOW.vote.pagesUrl || `${location.origin}/vote.html`;
   }
   function qrSrc(url) {
@@ -134,6 +142,7 @@
       role.textContent = canDrive() ? "قيادة الجلسة" : "عرض مباشر";
     }
     clearInterval(pollTimer);
+    if (pollUnsub) { pollUnsub(); pollUnsub = null; }
     app.dataset.dir = slideDir > 0 ? "next" : "prev";
     if (canDrive() && slide.type !== "round" && slide.type !== "finale") clearPoll();
 
@@ -420,7 +429,8 @@
     if (pushing) return;
     pushing = true;
     try {
-      await api("goto", { slide: String(state.slide), widgets: JSON.stringify(state.widgets) });
+      if (liveOn()) await Live.pushShow(state.slide, state.widgets);
+      else await api("goto", { slide: String(state.slide), widgets: JSON.stringify(state.widgets) });
     } catch { /* rehearsal */ }
     pushing = false;
   }
@@ -435,7 +445,8 @@
     const poll = pollPayload(id);
     if (!poll) return;
     try {
-      await api("arm", { payload: JSON.stringify(poll), poll });
+      if (liveOn()) await Live.armPoll(poll);
+      else await api("arm", { payload: JSON.stringify(poll), poll });
     } catch { /* rehearsal */ }
   }
 
@@ -443,16 +454,23 @@
     const poll = pollPayload(id);
     if (!poll) return;
     try {
-      await api("open", { payload: JSON.stringify(poll), poll });
+      if (liveOn()) await Live.openPoll(poll, SHOW.vote.seconds);
+      else await api("open", { payload: JSON.stringify(poll), poll });
     } catch { /* rehearsal */ }
   }
 
   async function closePoll() {
-    try { await api("close"); } catch { /* ignore */ }
+    try {
+      if (liveOn()) await Live.closePoll();
+      else await api("close");
+    } catch { /* ignore */ }
   }
 
   async function clearPoll() {
-    try { await api("clear"); } catch { /* ignore */ }
+    try {
+      if (liveOn()) await Live.clearPoll();
+      else await api("clear");
+    } catch { /* ignore */ }
   }
 
   function bindPoll() {
@@ -464,22 +482,55 @@
     let wasLive = false;
     let locked = false;
     let started = false;
+    let snap = null; // آخر لقطة من Firebase/GAS
+
+    const viewOf = (raw) => {
+      if (!raw) return null;
+      const until = Number(raw.until || 0);
+      const left = until > 0 ? Math.max(0, Math.floor((until - Date.now()) / 1000)) : Number(raw.remaining || 0);
+      const open = Boolean(raw.active) && until > Date.now();
+      const armed = Boolean(raw.armed || (raw.active && raw.active.armed)) && !open;
+      return {
+        active: raw.active,
+        counts: raw.counts || {},
+        total: raw.total || 0,
+        remaining: open ? left : (armed ? SHOW.vote.seconds : 0),
+        open,
+        armed,
+        until,
+      };
+    };
+
+    const apply = (raw) => {
+      if (!raw) return;
+      snap = raw;
+      const data = viewOf(raw);
+      if (!data) return;
+      if (data.open && data.remaining > 0) { wasLive = true; started = true; }
+      const waiting = !started && !wasLive && !data.open;
+      paintPoll(id, data.counts, data.total, data.remaining, data.open, waiting || data.armed);
+      if (!locked && wasLive && !data.open) {
+        locked = true;
+        clearInterval(pollTimer);
+        if (pollUnsub) { pollUnsub(); pollUnsub = null; }
+        if (canDrive()) closePoll();
+        soundReveal();
+      }
+    };
+
     const tick = async () => {
       try {
+        if (liveOn()) {
+          if (snap) apply(snap);
+          return;
+        }
         const data = gasUrl()
           ? await api("results", { q: id })
           : await (await fetch(`/api/results?q=${encodeURIComponent(id)}`, { cache: "no-store" })).json();
-        if (data.open && Number(data.remaining) > 0) { wasLive = true; started = true; }
-        const waiting = !started && !wasLive && !data.open;
-        paintPoll(id, data.counts || {}, data.total, data.remaining, data.open, waiting || data.armed);
-        if (!locked && wasLive && (data.open === false || Number(data.remaining) === 0)) {
-          locked = true;
-          clearInterval(pollTimer);
-          if (canDrive()) closePoll();
-          soundReveal();
-        }
+        apply(data);
       } catch { /* keep last bars */ }
     };
+
     const go = host.querySelector("[data-start-vote]");
     if (go) {
       go.onclick = async () => {
@@ -489,13 +540,23 @@
         lastRemain = 99;
         lastVotes = 0;
         await openPoll(id);
-        tick();
+        if (!liveOn()) tick();
       };
     }
+
     const start = canDrive() ? armPoll(id) : Promise.resolve();
     start.then(() => {
-      tick();
-      pollTimer = setInterval(tick, 400);
+      if (liveOn()) {
+        pollUnsub = Live.onPoll((data) => {
+          if (data.active && data.active.id !== id) return;
+          apply(data);
+        });
+        // يحرّك العدّاد كل ربع ثانية محلياً بدون طرق السيرفر
+        pollTimer = setInterval(() => { if (snap) apply(snap); }, 250);
+      } else {
+        tick();
+        pollTimer = setInterval(tick, 400);
+      }
     });
   }
 
@@ -585,22 +646,32 @@
     }
   });
 
-  setInterval(async () => {
+  function followShow(data) {
+    if (!data || data.ok === false) return;
+    if (data.widgets && typeof data.widgets === "object") state.widgets = data.widgets;
+    if (Number(data.slide) !== state.slide) {
+      slideDir = Number(data.slide) > state.slide ? 1 : -1;
+      state.slide = Number(data.slide);
+      soundNext();
+      render();
+      return;
+    }
+    paintTraits();
+  }
+
+  function startFollow() {
     if (canDrive()) return;
-    try {
-      const data = await api("show");
-      if (!data || data.ok === false) return;
-      if (data.widgets && typeof data.widgets === "object") state.widgets = data.widgets;
-      if (Number(data.slide) !== state.slide) {
-        slideDir = Number(data.slide) > state.slide ? 1 : -1;
-        state.slide = Number(data.slide);
-        soundNext();
-        render();
-        return;
-      }
-      paintTraits();
-    } catch { /* keep last frame */ }
-  }, 500);
+    if (liveOn()) {
+      showUnsub = Live.onShow(followShow);
+      return;
+    }
+    setInterval(async () => {
+      if (canDrive()) return;
+      try {
+        followShow(await api("show"));
+      } catch { /* keep last frame */ }
+    }, 500);
+  }
 
   setInterval(() => {
     const s = Math.floor((Date.now() - started) / 1000);
@@ -611,5 +682,10 @@
   const crest = '<img class="ticker-crest" src="img/sands-logo.png" alt="" />';
   const tickerLine = SHOW.ticker.map((t) => `<span>${t}</span>${crest}`).join("");
   document.querySelector("[data-ticker]").innerHTML = `${tickerLine}${tickerLine}`;
-  render();
+
+  (async () => {
+    if (window.Live) await Live.init();
+    startFollow();
+    render();
+  })();
 })();

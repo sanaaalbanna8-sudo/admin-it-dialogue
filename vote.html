@@ -43,6 +43,7 @@
       transition: transform .15s ease, filter .15s ease;
     }
     button.opt:active { transform: scale(.97); filter: brightness(1.12); }
+    button.opt:disabled { opacity: .7; cursor: default; }
     button.opt b {
       width: 52px; height: 52px; border-radius: 14px; background: rgba(0,0,0,.22);
       display: grid; place-items: center; font-size: 1.35rem;
@@ -57,7 +58,11 @@
     <h1>أكاديمية ساندس الوطنية</h1>
   </div>
   <div id="app"></div>
-  <script src="js/data.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js?v=live1"></script>
+  <script src="js/live.js?v=live1"></script>
+  <script src="js/data.js?v=live1"></script>
   <script>
     const LETTERS = ["أ", "ب", "ج", "د", "هـ"];
     const COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c", "#864cbf"];
@@ -67,6 +72,8 @@
     let votedFor = "";
     let screen = "";
     let audio;
+    let lastData = null;
+    let untilMs = 0;
 
     function beep() {
       try {
@@ -82,7 +89,9 @@
         o.start(); o.stop(audio.currentTime + 0.09);
       } catch { /* ignore */ }
     }
+
     function gasUrl() { return (SHOW.vote && SHOW.vote.gasUrl) || localStorage.getItem("vote-gas") || ""; }
+
     function jsonp(url, params) {
       return new Promise((resolve, reject) => {
         const cb = "kcb" + Math.random().toString(36).slice(2);
@@ -96,32 +105,34 @@
         document.body.appendChild(s);
       });
     }
-    async function state() {
-      const gas = gasUrl();
-      if (gas) return jsonp(gas, { action: "state" });
-      const res = await fetch("/api/state", { cache: "no-store" });
-      if (!res.ok) throw new Error("state");
-      return res.json();
+
+    function withClock(data) {
+      if (!data || !data.active) return data;
+      if (untilMs > Date.now()) {
+        const left = Math.max(0, Math.floor((untilMs - Date.now()) / 1000));
+        return Object.assign({}, data, { open: left > 0, remaining: left, armed: false });
+      }
+      return data;
     }
-    async function sendVote(id, choice) {
-      const gas = gasUrl();
-      if (gas) return jsonp(gas, { action: "vote", q: id, choice, voter });
-      await fetch("/api/vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: id, choice, voter }),
-      });
-    }
+
     function isOpen(data) {
       return Boolean(data.active && data.open && Number(data.remaining || 0) > 0);
     }
     function isArmed(data) {
       return Boolean(data.active && (data.armed || data.active.armed) && !isOpen(data));
     }
-    function paint(data) {
-      if (!data.active) {
+
+    function paint(incoming) {
+      if (incoming && incoming.until) untilMs = Number(incoming.until);
+      else if (incoming && incoming.open && incoming.remaining != null && !incoming.until) {
+        untilMs = Date.now() + Number(incoming.remaining) * 1000;
+      }
+      const data = withClock(incoming || lastData);
+      lastData = incoming || lastData;
+      if (!data || !data.active) {
         lastId = "";
         votedFor = "";
+        untilMs = 0;
         if (screen === "wait") return;
         screen = "wait";
         app.innerHTML = '<div class="wait">انتظروا هنا.<br>السؤال يظهر لوحده عند بدء الجولة.</div><p class="meta">افتحوا الرابط مرة واحدة وابقوا على الصفحة.</p>';
@@ -160,10 +171,21 @@
           b.innerHTML = `<b>${LETTERS[i]}</b><span></span>`;
           b.querySelector("span").textContent = label;
           b.onclick = async () => {
+            if (votedFor === data.active.id) return;
             beep();
             votedFor = data.active.id;
-            await sendVote(data.active.id, label);
-            paint({ ...data, active: data.active, open: true, remaining: 1 });
+            paint(lastData);
+            try {
+              if (Live.ready()) await Live.castVote(data.active.id, label, voter);
+              else if (gasUrl()) await jsonp(gasUrl(), { action: "vote", q: data.active.id, choice: label, voter });
+              else {
+                await fetch("/api/vote", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ q: data.active.id, choice: label, voter }),
+                });
+              }
+            } catch { /* الصوت وُسم محلياً */ }
           };
           document.getElementById("opts").appendChild(b);
         });
@@ -171,12 +193,34 @@
       const clock = app.querySelector("[data-left]");
       if (clock) clock.textContent = data.remaining;
     }
-    async function tick() {
-      try { paint(await state()); }
-      catch { if (screen !== "err") { screen = "err"; app.innerHTML = '<div class="wait">نحاول الاتصال بالعرض…</div>'; } }
+
+    async function boot() {
+      app.innerHTML = '<div class="wait">نحاول الاتصال…</div>';
+      const live = window.Live ? await Live.init() : false;
+      if (live) {
+        Live.onPoll(paint);
+        setInterval(() => { if (lastData) paint(lastData); }, 250);
+        return;
+      }
+      async function tick() {
+        try {
+          const gas = gasUrl();
+          const data = gas
+            ? await jsonp(gas, { action: "state" })
+            : await (await fetch("/api/state", { cache: "no-store" })).json();
+          paint(data);
+        } catch {
+          if (screen !== "err") {
+            screen = "err";
+            app.innerHTML = '<div class="wait">نحاول الاتصال بالعرض…</div>';
+          }
+        }
+      }
+      tick();
+      setInterval(tick, 700);
     }
-    tick();
-    setInterval(tick, 700);
+
+    boot();
   </script>
 </body>
 </html>
