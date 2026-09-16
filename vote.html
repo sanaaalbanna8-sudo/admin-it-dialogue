@@ -60,15 +60,21 @@
     }
     .guard {
       position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
-      background: rgba(4,6,10,.92); padding: 24px; text-align: center;
+      background: rgba(4,6,10,.96); padding: 24px; text-align: center;
     }
     .guard.on { display: grid; }
     .guard strong { font-size: 1.35rem; color: #ffb4a8; display: block; margin-bottom: 10px; }
-    .guard p { color: #fff8ea; font-weight: 800; line-height: 1.7; margin: 0 0 16px; }
+    .guard p { color: #fff8ea; font-weight: 800; line-height: 1.7; margin: 0 0 14px; }
+    .guard input {
+      width: min(260px, 90%); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(201,165,106,.45);
+      background: #121722; color: #fff8ea; font: inherit; font-weight: 800; text-align: center;
+      letter-spacing: .2em; margin-bottom: 10px;
+    }
     .guard button {
       border: 0; border-radius: 14px; padding: 12px 18px; font: inherit; font-weight: 900;
       background: linear-gradient(135deg, #c9a56a, #e0b34a); color: #1a1208; cursor: pointer;
     }
+    .guard .err { color: #ff8f7d; font-weight: 800; min-height: 1.2em; margin: 0 0 8px; }
   </style>
 </head>
 <body>
@@ -79,21 +85,24 @@
     <div class="focus-bar">
       <button type="button" id="btn-fs">ملء الشاشة</button>
     </div>
-    <p class="meta">ابقوا على هذه الصفحة طوال الجلسة. لا تغلقوها ولا تفتحوا تطبيقات أخرى.</p>
+    <p class="meta">ابقوا على هذه الصفحة طوال الجلسة. مغادرة الصفحة تقفل التصويت ويحتاج فتحه من المعلمة.</p>
   </div>
   <div id="app"></div>
   <div class="guard" id="guard" aria-live="assertive">
     <div>
-      <strong>ارجعوا لشاشة التصويت</strong>
-      <p>غادرتم الصفحة.<br>التصويت يعمل فقط وأنتم هنا.</p>
-      <button type="button" id="btn-back">العودة الآن</button>
+      <strong>التصويت مُقفَل</strong>
+      <p>غادرتم شاشة التصويت.<br>نادوا المعلمة لفتح الجهاز بكلمة السر.</p>
+      <p class="err" id="lock-err"></p>
+      <input id="lock-pin" type="password" inputmode="numeric" maxlength="8" placeholder="كلمة سر المعلمة" autocomplete="off" />
+      <br />
+      <button type="button" id="btn-unlock">فتح بواسطة المعلمة</button>
     </div>
   </div>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/firebase-config.js?v=live1"></script>
-  <script src="js/live.js?v=live1"></script>
-  <script src="js/data.js?v=live1"></script>
+  <script src="js/firebase-config.js?v=lock1"></script>
+  <script src="js/live.js?v=lock1"></script>
+  <script src="js/data.js?v=lock1"></script>
   <script>
     const LETTERS = ["أ", "ب", "ج", "د", "هـ"];
     const COLORS = ["#e21b3c", "#1368ce", "#d89e00", "#26890c", "#864cbf"];
@@ -251,30 +260,69 @@
       setInterval(tick, 700);
     }
 
+    const LOCK_KEY = "mng-vote-locked";
+    const PIN = String((SHOW.vote && SHOW.vote.pin) || "4826");
     const guard = document.getElementById("guard");
+    const lockErr = document.getElementById("lock-err");
+    const lockPin = document.getElementById("lock-pin");
+    let leaveTimer = null;
+
+    function isLocked() { return localStorage.getItem(LOCK_KEY) === "1"; }
+    function setLocked(on) {
+      if (on) localStorage.setItem(LOCK_KEY, "1");
+      else localStorage.removeItem(LOCK_KEY);
+      guard.classList.toggle("on", Boolean(on));
+      if (on) {
+        lockErr.textContent = "";
+        lockPin.value = "";
+      } else if (lastData) {
+        screen = "";
+        paint(lastData);
+      }
+    }
+
     document.getElementById("btn-fs").onclick = async () => {
       try {
         if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
         else await document.exitFullscreen();
-      } catch { /* بعض الجوالات تمنع ملء الشاشة بدون تفاعل إضافي */ }
+      } catch { /* بعض الجوالات تمنع */ }
     };
-    document.getElementById("btn-back").onclick = () => {
-      guard.classList.remove("on");
-      window.focus();
+    document.getElementById("btn-unlock").onclick = () => {
+      if (String(lockPin.value).trim() === PIN) {
+        setLocked(false);
+      } else {
+        lockErr.textContent = "كلمة السر غير صحيحة";
+        lockPin.value = "";
+        lockPin.focus();
+      }
     };
-    function showGuard(on) {
-      guard.classList.toggle("on", Boolean(on));
+    lockPin.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("btn-unlock").click();
+    });
+
+    function markLeftSoon() {
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(() => {
+        if (document.hidden) setLocked(true);
+      }, 1800); // ثانية ونص تقريباً حتى لا ينقفل بلمسة خاطئة
     }
     document.addEventListener("visibilitychange", () => {
-      showGuard(document.hidden);
+      if (document.hidden) markLeftSoon();
+      else clearTimeout(leaveTimer);
     });
-    window.addEventListener("blur", () => {
-      // تأخير بسيط حتى لا يظهر عند فتح لوحة المفاتيح
-      setTimeout(() => {
-        if (document.hidden || document.activeElement === document.body) showGuard(true);
-      }, 400);
-    });
-    window.addEventListener("focus", () => showGuard(false));
+
+    if (isLocked()) setLocked(true);
+
+    // منع التصويت أثناء القفل
+    const _paint = paint;
+    paint = function (incoming) {
+      if (isLocked()) {
+        guard.classList.add("on");
+        if (incoming) lastData = incoming;
+        return;
+      }
+      _paint(incoming);
+    };
 
     boot();
   </script>
