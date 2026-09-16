@@ -75,6 +75,10 @@
       background: linear-gradient(135deg, #c9a56a, #e0b34a); color: #1a1208; cursor: pointer;
     }
     .guard .err { color: #ff8f7d; font-weight: 800; min-height: 1.2em; margin: 0 0 8px; }
+    .guard .rebuke {
+      color: #ffd28a; font-weight: 900; line-height: 1.75;
+      margin: 0 0 16px; font-size: 1.02rem;
+    }
   </style>
 </head>
 <body>
@@ -91,7 +95,8 @@
   <div class="guard" id="guard" aria-live="assertive">
     <div>
       <strong>التصويت مُقفَل</strong>
-      <p>غادرتم شاشة التصويت.<br>نادوا المعلمة لفتح الجهاز بكلمة السر.</p>
+      <p>غادرتم شاشة التصويت.<br>نادوا المعلمة لفتح التصويت.</p>
+      <p class="rebuke">الثقة تُمنح… وتُسحب. كوني على قدر الثقة التي أُعطيت لكِ.</p>
       <p class="err" id="lock-err"></p>
       <input id="lock-pin" type="password" inputmode="numeric" maxlength="8" placeholder="كلمة سر المعلمة" autocomplete="off" />
       <br />
@@ -316,7 +321,7 @@
       clearTimeout(leaveTimer);
       leaveTimer = setTimeout(() => {
         if (document.hidden) setLocked(true);
-      }, 1800);
+      }, 1000); // ثانية واحدة
     }
     document.addEventListener("visibilitychange", () => {
       if (isGuest) return;
