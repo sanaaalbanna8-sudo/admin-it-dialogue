@@ -104,17 +104,56 @@
   }
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
   function soundWarn() { tone(196, 0.09, "square", 0.03); setTimeout(() => tone(160, 0.1, "square", 0.022), 90); }
-  /** نغمة تلفزيونية عند بدء التصويت — أعلى وأقصر حتى تُسمع بوضوح */
-  function soundVoteGo() {
-    tone(520, 0.11, "square", 0.12);
-    setTimeout(() => tone(660, 0.12, "square", 0.13), 100);
-    setTimeout(() => tone(784, 0.14, "square", 0.14), 210);
-    setTimeout(() => tone(1040, 0.28, "sawtooth", 0.12, 200), 340);
-    setTimeout(() => tone(1310, 0.45, "triangle", 0.1), 520);
+
+  // ملف صوت جاهز — أوثق من Oscillator على شاشات القاعة
+  const voteGoAudio = HOST ? null : new Audio(`audio/vote-go.wav?v=1`);
+  if (voteGoAudio) {
+    voteGoAudio.preload = "auto";
+    voteGoAudio.volume = 1;
   }
+  let lastGoUntil = 0;
+
+  function soundVoteGo() {
+    if (HOST || state.muted) return;
+    const blast = () => {
+      try {
+        if (voteGoAudio) {
+          voteGoAudio.pause();
+          voteGoAudio.currentTime = 0;
+          const p = voteGoAudio.play();
+          if (p && p.catch) p.catch(() => { /* fallback below */ });
+        }
+      } catch { /* ignore */ }
+      // احتياط Web Audio بنفس اللحظة
+      tone(520, 0.11, "square", 0.12);
+      setTimeout(() => tone(660, 0.12, "square", 0.13), 100);
+      setTimeout(() => tone(784, 0.14, "square", 0.14), 210);
+      setTimeout(() => tone(1040, 0.28, "sawtooth", 0.12, 200), 340);
+      setTimeout(() => tone(1310, 0.45, "triangle", 0.1), 520);
+    };
+    try {
+      const a = ctx();
+      if (a.state === "suspended") {
+        a.resume().then(blast).catch(blast);
+        setTimeout(blast, 400);
+      } else {
+        blast();
+      }
+    } catch {
+      blast();
+    }
+  }
+
+  /** مرة واحدة لكل جولة تصويت (حسب until) */
+  function triggerVoteGo(until) {
+    const key = Number(until || 0);
+    if (!key || key === lastGoUntil) return;
+    lastGoUntil = key;
+    soundVoteGo();
+  }
+
   let lastVotes = 0;
   let lastRemain = 99;
-  let pollWasVoting = false;
 
   function jsonp(url, params) {
     return new Promise((resolve, reject) => {
@@ -376,9 +415,6 @@
     if (sum > lastVotes && voting) soundVote();
     lastVotes = sum;
     const left = remaining == null ? 99 : Math.max(0, remaining);
-    // نفس مسار نغمة التحذير (الـ3 ثواني) — مضمون على شاشة القاعة
-    if (voting && !pollWasVoting && !HOST) soundVoteGo();
-    pollWasVoting = voting;
     if (voting && left <= 3 && left > 0 && left < lastRemain) soundWarn();
     lastRemain = left;
     host.classList.toggle("is-ready", ready);
@@ -492,7 +528,6 @@
     const id = host.dataset.poll;
     lastVotes = 0;
     lastRemain = 99;
-    pollWasVoting = false;
     let wasLive = false;
     let locked = false;
     let started = false;
@@ -523,6 +558,7 @@
       if (data.open && data.remaining > 0) {
         wasLive = true;
         started = true;
+        triggerVoteGo(data.until);
       }
       const waiting = !started && !wasLive && !data.open;
       paintPoll(id, data.counts, data.total, data.remaining, data.open, waiting || data.armed);
@@ -647,6 +683,20 @@
       paintMute();
       save();
       ctx();
+      // فتح قفل تشغيل ملف الصوت (مهم لمتصفحات الشاشات)
+      if (voteGoAudio) {
+        voteGoAudio.muted = true;
+        const unlock = voteGoAudio.play();
+        if (unlock && unlock.then) {
+          unlock.then(() => {
+            voteGoAudio.pause();
+            voteGoAudio.currentTime = 0;
+            voteGoAudio.muted = false;
+          }).catch(() => { voteGoAudio.muted = false; });
+        } else {
+          voteGoAudio.muted = false;
+        }
+      }
       document.body.dataset.audioReady = "1";
       const tip = document.querySelector("[data-audio-arm]");
       if (tip) tip.remove();
