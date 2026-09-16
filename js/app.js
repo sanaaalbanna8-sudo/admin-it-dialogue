@@ -521,8 +521,9 @@
       if (!data) return;
       if (!data.open) heardGo = false;
       if (data.open && data.remaining > 0) {
+        // الصوت من شاشات العرض فقط — تابلت المضيفة (?host=1) ما يشغّل النغمة
         if (!heardGo) {
-          soundVoteGo(); // يشتغل على الشاشة الكبيرة أيضاً، مش بس تابلت المضيفة
+          if (!HOST) soundVoteGo();
           heardGo = true;
         }
         wasLive = true;
@@ -636,9 +637,33 @@
   }
   document.querySelector("[data-mute]").onclick = () => {
     state.muted = !state.muted;
+    try { ctx(); } catch { /* unlock */ }
     paintMute();
     save();
   };
+
+  // شاشة العرض تحتاج لمسة واحدة حتى يسمح المتصفح بالصوت بدون ضغط من المضيفة
+  let displayAudioReady = HOST;
+  function armDisplayAudio() {
+    if (HOST || displayAudioReady || state.muted) return;
+    try {
+      ctx();
+      displayAudioReady = true;
+      const tip = document.querySelector("[data-audio-arm]");
+      if (tip) tip.hidden = true;
+    } catch { /* ignore */ }
+  }
+  if (!HOST) {
+    const tip = document.createElement("button");
+    tip.type = "button";
+    tip.className = "audio-arm";
+    tip.setAttribute("data-audio-arm", "");
+    tip.textContent = "اضغطوا هنا مرة واحدة لتفعيل صوت القاعة";
+    tip.onclick = () => armDisplayAudio();
+    document.body.appendChild(tip);
+    window.addEventListener("pointerdown", armDisplayAudio, { passive: true });
+    window.addEventListener("keydown", armDisplayAudio);
+  }
   document.querySelector("[data-open-map]").onclick = () => {
     mapGrid.innerHTML = `
       ${ACTS.map((a) => `
