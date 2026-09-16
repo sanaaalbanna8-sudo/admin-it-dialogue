@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>صوّت | طاولة القرار</title>
+  <title>صوّت | طاولة القرار v-lock2</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; }
@@ -76,11 +76,12 @@
     }
     .guard .err { color: #ff8f7d; font-weight: 800; min-height: 1.2em; margin: 0 0 8px; }
     .guard .rebuke {
-      color: #ffd28a; font-weight: 900; line-height: 1.75;
-      margin: 12px 0 18px; font-size: 1.12rem;
-      padding: 12px 14px; border-radius: 14px;
-      background: rgba(255, 107, 90, 0.12);
-      border: 1px solid rgba(255, 180, 168, 0.35);
+      color: #ffe0a8; font-weight: 900; line-height: 1.8;
+      margin: 14px 0 16px; font-size: clamp(1.15rem, 4.5vw, 1.45rem);
+      padding: 14px 16px; border-radius: 16px;
+      background: rgba(255, 107, 90, 0.16);
+      border: 1px solid rgba(255, 180, 168, 0.5);
+      box-shadow: 0 0 24px rgba(255, 107, 90, 0.18);
     }
   </style>
 </head>
@@ -96,10 +97,10 @@
   </div>
   <div id="app"></div>
   <div class="guard" id="guard" aria-live="assertive">
-    <div>
+    <div id="guard-box">
       <strong>التصويت مُقفَل</strong>
+      <p class="rebuke">الثقة تُمنح… وتُسحب.<br>كوني على قدر الثقة التي أُعطيت لكِ.</p>
       <p>غادرتم شاشة التصويت.<br>نادوا المعلمة لفتح التصويت.</p>
-      <p class="rebuke">الثقة تُمنح… وتُسحب. كوني على قدر الثقة التي أُعطيت لكِ.</p>
       <p class="err" id="lock-err"></p>
       <input id="lock-pin" type="password" inputmode="numeric" maxlength="8" placeholder="كلمة سر المعلمة" autocomplete="off" />
       <br />
