@@ -261,14 +261,25 @@
     }
 
     const LOCK_KEY = "mng-vote-locked";
+    const GUEST_KEY = "mng-vote-guest";
     const PIN = String((SHOW.vote && SHOW.vote.pin) || "4826");
+    const params = new URLSearchParams(location.search);
+    // رابط الضيوف فقط: vote.html?guest=1 — لا يظهر خيار على الشاشة حتى لا تلتف الطالبات
+    if (params.get("guest") === "1") localStorage.setItem(GUEST_KEY, "1");
+    const isGuest = localStorage.getItem(GUEST_KEY) === "1";
     const guard = document.getElementById("guard");
     const lockErr = document.getElementById("lock-err");
     const lockPin = document.getElementById("lock-pin");
     let leaveTimer = null;
 
-    function isLocked() { return localStorage.getItem(LOCK_KEY) === "1"; }
+    if (isGuest) {
+      const tip = document.querySelector(".top .meta");
+      if (tip) tip.textContent = "وضع الضيف: يمكنكم البقاء على الصفحة للتصويت مع الجلسة.";
+    }
+
+    function isLocked() { return !isGuest && localStorage.getItem(LOCK_KEY) === "1"; }
     function setLocked(on) {
+      if (isGuest) return; // الضيوف لا يُقفَلون
       if (on) localStorage.setItem(LOCK_KEY, "1");
       else localStorage.removeItem(LOCK_KEY);
       guard.classList.toggle("on", Boolean(on));
@@ -301,19 +312,20 @@
     });
 
     function markLeftSoon() {
+      if (isGuest) return;
       clearTimeout(leaveTimer);
       leaveTimer = setTimeout(() => {
         if (document.hidden) setLocked(true);
-      }, 1800); // ثانية ونص تقريباً حتى لا ينقفل بلمسة خاطئة
+      }, 1800);
     }
     document.addEventListener("visibilitychange", () => {
+      if (isGuest) return;
       if (document.hidden) markLeftSoon();
       else clearTimeout(leaveTimer);
     });
 
     if (isLocked()) setLocked(true);
 
-    // منع التصويت أثناء القفل
     const _paint = paint;
     paint = function (incoming) {
       if (isLocked()) {
