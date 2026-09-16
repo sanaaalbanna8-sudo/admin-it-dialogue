@@ -104,20 +104,17 @@
   }
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
   function soundWarn() { tone(196, 0.09, "square", 0.03); setTimeout(() => tone(160, 0.1, "square", 0.022), 90); }
-  /** نغمة تلفزيونية عند بدء التصويت — أعلى وأطول */
+  /** نغمة تلفزيونية عند بدء التصويت — أعلى وأقصر حتى تُسمع بوضوح */
   function soundVoteGo() {
-    tone(140, 0.12, "square", 0.085);
-    setTimeout(() => tone(180, 0.12, "square", 0.09), 110);
-    setTimeout(() => tone(230, 0.14, "square", 0.095), 230);
-    setTimeout(() => tone(300, 0.16, "sawtooth", 0.09, 160), 370);
-    setTimeout(() => tone(420, 0.28, "sawtooth", 0.1, 220), 540);
-    setTimeout(() => tone(560, 0.42, "triangle", 0.1), 760);
-    setTimeout(() => tone(780, 0.55, "sine", 0.085), 980);
-    setTimeout(() => tone(1040, 0.7, "triangle", 0.07), 1280);
-    setTimeout(() => tone(1310, 0.45, "sine", 0.05), 1650);
+    tone(520, 0.11, "square", 0.12);
+    setTimeout(() => tone(660, 0.12, "square", 0.13), 100);
+    setTimeout(() => tone(784, 0.14, "square", 0.14), 210);
+    setTimeout(() => tone(1040, 0.28, "sawtooth", 0.12, 200), 340);
+    setTimeout(() => tone(1310, 0.45, "triangle", 0.1), 520);
   }
   let lastVotes = 0;
   let lastRemain = 99;
+  let pollWasVoting = false;
 
   function jsonp(url, params) {
     return new Promise((resolve, reject) => {
@@ -379,6 +376,9 @@
     if (sum > lastVotes && voting) soundVote();
     lastVotes = sum;
     const left = remaining == null ? 99 : Math.max(0, remaining);
+    // نفس مسار نغمة التحذير (الـ3 ثواني) — مضمون على شاشة القاعة
+    if (voting && !pollWasVoting && !HOST) soundVoteGo();
+    pollWasVoting = voting;
     if (voting && left <= 3 && left > 0 && left < lastRemain) soundWarn();
     lastRemain = left;
     host.classList.toggle("is-ready", ready);
@@ -492,11 +492,11 @@
     const id = host.dataset.poll;
     lastVotes = 0;
     lastRemain = 99;
+    pollWasVoting = false;
     let wasLive = false;
     let locked = false;
     let started = false;
     let snap = null;
-    let heardGo = false;
 
     const viewOf = (raw) => {
       if (!raw) return null;
@@ -520,18 +520,7 @@
       snap = raw;
       const data = viewOf(raw);
       if (!data) return;
-      if (!data.open) {
-        heardGo = false;
-        window.__voteGoQueued = false;
-      }
       if (data.open && data.remaining > 0) {
-        if (!heardGo) {
-          heardGo = true;
-          if (!HOST) {
-            if (window.__displayAudioReady) soundVoteGo();
-            else window.__voteGoQueued = true;
-          }
-        }
         wasLive = true;
         started = true;
       }
@@ -649,27 +638,20 @@
   };
 
   // شاشة العرض فقط: لمسة واحدة تفتح قفل الصوت في المتصفح
-  window.__displayAudioReady = false;
-  window.__voteGoQueued = false;
   document.body.dataset.device = HOST ? "host" : "display";
 
   function armDisplayAudio() {
-    if (HOST || window.__displayAudioReady) return;
+    if (HOST || document.body.dataset.audioReady === "1") return;
     try {
       state.muted = false;
       paintMute();
       save();
       ctx();
-      window.__displayAudioReady = true;
+      document.body.dataset.audioReady = "1";
       const tip = document.querySelector("[data-audio-arm]");
       if (tip) tip.remove();
-      // تأكيد مسموع: إذا سمعتوا هذي من سماعات القاعة، الصوت جاهز
       tone(660, 0.14, "sine", 0.1);
       setTimeout(() => tone(990, 0.22, "triangle", 0.09), 130);
-      if (window.__voteGoQueued) {
-        window.__voteGoQueued = false;
-        setTimeout(() => soundVoteGo(), 450);
-      }
     } catch { /* ignore */ }
   }
 
