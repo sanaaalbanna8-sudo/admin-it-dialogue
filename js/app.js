@@ -103,6 +103,16 @@
   }
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
   function soundWarn() { tone(196, 0.09, "square", 0.03); setTimeout(() => tone(160, 0.1, "square", 0.022), 90); }
+  /** نغمة تلفزيونية عند بدء التصويت */
+  function soundVoteGo() {
+    tone(160, 0.07, "square", 0.045);
+    setTimeout(() => tone(200, 0.07, "square", 0.05), 85);
+    setTimeout(() => tone(260, 0.09, "square", 0.055), 170);
+    setTimeout(() => tone(390, 0.12, "sawtooth", 0.05, 180), 270);
+    setTimeout(() => tone(520, 0.28, "triangle", 0.055), 400);
+    setTimeout(() => tone(780, 0.35, "sine", 0.04), 520);
+    setTimeout(() => tone(1040, 0.22, "triangle", 0.028), 680);
+  }
   let lastVotes = 0;
   let lastRemain = 99;
 
@@ -536,7 +546,7 @@
       go.onclick = async () => {
         go.disabled = true;
         started = true;
-        soundNext();
+        soundVoteGo();
         lastRemain = 99;
         lastVotes = 0;
         await openPoll(id);
