@@ -494,7 +494,8 @@
     let wasLive = false;
     let locked = false;
     let started = false;
-    let snap = null; // آخر لقطة من Firebase/GAS
+    let snap = null;
+    let heardGo = false; // نغمة البدء مرة واحدة لكل جولة — على كل الشاشات
 
     const viewOf = (raw) => {
       if (!raw) return null;
@@ -518,7 +519,15 @@
       snap = raw;
       const data = viewOf(raw);
       if (!data) return;
-      if (data.open && data.remaining > 0) { wasLive = true; started = true; }
+      if (!data.open) heardGo = false;
+      if (data.open && data.remaining > 0) {
+        if (!heardGo) {
+          soundVoteGo(); // يشتغل على الشاشة الكبيرة أيضاً، مش بس تابلت المضيفة
+          heardGo = true;
+        }
+        wasLive = true;
+        started = true;
+      }
       const waiting = !started && !wasLive && !data.open;
       paintPoll(id, data.counts, data.total, data.remaining, data.open, waiting || data.armed);
       if (!locked && wasLive && !data.open) {
@@ -548,7 +557,6 @@
       go.onclick = async () => {
         go.disabled = true;
         started = true;
-        soundVoteGo();
         lastRemain = 99;
         lastVotes = 0;
         await openPoll(id);
