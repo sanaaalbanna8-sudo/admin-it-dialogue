@@ -77,7 +77,10 @@
     .guard .err { color: #ff8f7d; font-weight: 800; min-height: 1.2em; margin: 0 0 8px; }
     .guard .rebuke {
       color: #ffd28a; font-weight: 900; line-height: 1.75;
-      margin: 0 0 16px; font-size: 1.02rem;
+      margin: 12px 0 18px; font-size: 1.12rem;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(255, 107, 90, 0.12);
+      border: 1px solid rgba(255, 180, 168, 0.35);
     }
   </style>
 </head>
@@ -321,7 +324,7 @@
       clearTimeout(leaveTimer);
       leaveTimer = setTimeout(() => {
         if (document.hidden) setLocked(true);
-      }, 1000); // ثانية واحدة
+      }, 400); // أقل من ثانية
     }
     document.addEventListener("visibilitychange", () => {
       if (isGuest) return;
