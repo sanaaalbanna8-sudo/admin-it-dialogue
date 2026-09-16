@@ -49,15 +49,6 @@
       display: grid; place-items: center; font-size: 1.35rem;
     }
     .meta { color: #c9b89a; font-size: .85rem; margin-top: 16px; text-align: center; }
-    .focus-bar {
-      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-      margin: 8px 0 4px;
-    }
-    .focus-bar button {
-      border: 1px solid rgba(201,165,106,.45); background: rgba(201,165,106,.12);
-      color: #ffe7a8; font: inherit; font-weight: 800; font-size: .82rem;
-      padding: 8px 12px; border-radius: 999px; cursor: pointer;
-    }
     .guard {
       position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
       background: rgba(4,6,10,.96); padding: 24px; text-align: center;
@@ -90,9 +81,6 @@
     <div class="crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
     <div class="brand">طاولة القرار</div>
     <h1>أكاديمية ساندس الوطنية</h1>
-    <div class="focus-bar">
-      <button type="button" id="btn-fs">ملء الشاشة</button>
-    </div>
     <p class="meta">ابقوا على هذه الصفحة طوال الجلسة. مغادرة الصفحة تقفل التصويت ويحتاج فتحه من المعلمة.</p>
   </div>
   <div id="app"></div>
@@ -301,12 +289,6 @@
       }
     }
 
-    document.getElementById("btn-fs").onclick = async () => {
-      try {
-        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
-        else await document.exitFullscreen();
-      } catch { /* بعض الجوالات تمنع */ }
-    };
     document.getElementById("btn-unlock").onclick = () => {
       if (String(lockPin.value).trim() === PIN) {
         setLocked(false);
