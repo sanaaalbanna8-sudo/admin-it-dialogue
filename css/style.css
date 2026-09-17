@@ -1111,8 +1111,9 @@ input[type="range"] { width: 100%; accent-color: var(--admin); }
 .take .t .role-kicker { color: var(--tech); }
 
 .closing {
-  gap: 18px;
+  gap: 14px;
   justify-content: center;
+  padding-block: 16px 12px;
 }
 .closing .kicker {
   color: #e0b34a;
@@ -1120,35 +1121,75 @@ input[type="range"] { width: 100%; accent-color: var(--admin); }
   font-weight: 900;
   font-size: clamp(0.85rem, 1.4vw, 1.05rem);
 }
-.closing-quote {
-  margin: 8px auto 0;
-  max-width: min(92vw, 22ch);
+.closing-pair {
+  width: min(1100px, 94%);
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 18px;
-  text-align: center;
+  margin-top: 6px;
+  align-items: stretch;
 }
-.closing-quote span,
+.closing-quote {
+  margin: 0;
+  padding: 22px 20px;
+  border-radius: 20px;
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  align-content: center;
+}
+.closing-quote .role-kicker {
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+.closing-quote span:not(.role-kicker),
 .closing-quote strong {
   display: block;
   font-family: var(--display);
   line-height: 1.45;
   text-wrap: balance;
 }
-.closing-quote span {
-  font-size: clamp(1.55rem, 3.6vw, 2.55rem);
+.closing-quote span:not(.role-kicker) {
+  font-size: clamp(1.2rem, 2.4vw, 1.85rem);
   font-weight: 800;
   color: #fff8ea;
   text-shadow: 0 4px 28px rgba(0, 0, 0, 0.55);
 }
 .closing-quote strong {
-  font-size: clamp(1.85rem, 4.4vw, 3.15rem);
+  font-size: clamp(1.35rem, 2.8vw, 2.15rem);
   font-weight: 900;
+}
+.closing-quote.is-admin {
+  background: rgba(36, 26, 16, 0.72);
+  border: 1px solid rgba(201, 165, 106, 0.45);
+}
+.closing-quote.is-admin .role-kicker { color: #e0b34a; }
+.closing-quote.is-admin strong {
   color: #e8c56a;
   text-shadow: 0 0 40px rgba(232, 197, 106, 0.35), 0 6px 30px rgba(0, 0, 0, 0.6);
   animation: closingGlow 2.8s ease-in-out infinite;
 }
+.closing-quote.is-tech {
+  background: rgba(10, 24, 32, 0.74);
+  border: 1px solid rgba(143, 212, 216, 0.4);
+}
+.closing-quote.is-tech .role-kicker { color: #8fd4d8; }
+.closing-quote.is-tech strong {
+  color: #8fd4d8;
+  text-shadow: 0 0 36px rgba(143, 212, 216, 0.28), 0 6px 30px rgba(0, 0, 0, 0.55);
+  animation: closingGlowTech 2.8s ease-in-out infinite;
+}
 @keyframes closingGlow {
   50% { text-shadow: 0 0 52px rgba(232, 197, 106, 0.55), 0 6px 30px rgba(0, 0, 0, 0.6); }
+}
+@keyframes closingGlowTech {
+  50% { text-shadow: 0 0 48px rgba(143, 212, 216, 0.45), 0 6px 30px rgba(0, 0, 0, 0.55); }
+}
+
+@media (max-width: 900px) {
+  .closing-pair { grid-template-columns: 1fr; }
 }
 
 body.is-finale .dock { justify-content: center; }

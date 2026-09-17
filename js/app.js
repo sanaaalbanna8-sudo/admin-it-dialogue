@@ -434,10 +434,17 @@
         <div class="crest finale-crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
         <strong class="school-name">${SHOW.school}</strong>
         <div class="kicker">نغلق الميكروفون ولا نغلق السؤال</div>
-        <p class="closing-quote">
-          <span>يمكن أن يكون القائد رقمياً دون أن يتقن كل الأدوات.</span>
-          <strong>يكون القائد رقمياً عندما يعي أثر ما يوقّع عليه.</strong>
-        </p>
+        <div class="closing-pair">
+          <p class="closing-quote is-admin">
+            <span class="role-kicker">للإدارة</span>
+            <span>يمكن أن يكون القائد رقمياً دون أن يتقن كل الأدوات.</span>
+            <strong>يكون القائد رقمياً عندما يعي أثر ما يوقّع عليه.</strong>
+          </p>
+          <p class="closing-quote is-tech">
+            <span class="role-kicker">تكنولوجيا المعلومات</span>
+            <strong>الأداة تشيخ، ولكن العقلية التي تتعلم أسرع من الأداة لا تُستبدل أبداً.</strong>
+          </p>
+        </div>
       </section>`;
   }
 
