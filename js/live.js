@@ -179,6 +179,30 @@
     return { ok: true };
   }
 
+  function lockDevice(id) {
+    if (!ok || !id) return Promise.resolve();
+    return path(`deviceLocks/${id}`).set({
+      locked: true,
+      ts: firebase.database.ServerValue.TIMESTAMP,
+    });
+  }
+
+  function unlockDevice(id) {
+    if (!ok || !id) return Promise.resolve();
+    return path(`deviceLocks/${id}`).remove();
+  }
+
+  async function isDeviceLocked(id) {
+    if (!ok || !id) return false;
+    try {
+      const snap = await path(`deviceLocks/${id}`).once("value");
+      const v = snap.val();
+      return Boolean(v && v.locked);
+    } catch {
+      return false;
+    }
+  }
+
   window.Live = {
     configured,
     ready,
@@ -192,5 +216,8 @@
     onPoll,
     castVote,
     toState,
+    lockDevice,
+    unlockDevice,
+    isDeviceLocked,
   };
 })();
