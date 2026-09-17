@@ -1,5 +1,5 @@
 const PROPS = PropertiesService.getScriptProperties();
-const PIN_DEFAULT = "4826";
+const PIN_DEFAULT = "26788";
 const SECONDS_DEFAULT = 12;
 
 function doGet(e) {

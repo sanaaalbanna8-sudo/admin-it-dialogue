@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent
 VOTES = {}
 ACTIVE = None
 SHOW = {"slide": 0, "widgets": {}}
-PIN = "4826"
+PIN = "26788"
 SECONDS = 12
 
 

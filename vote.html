@@ -259,7 +259,7 @@
 
     const LOCK_KEY = "mng-vote-locked";
     const GUEST_KEY = "mng-vote-guest";
-    const PIN = String((SHOW.vote && SHOW.vote.pin) || "4826");
+    const PIN = String((SHOW.vote && SHOW.vote.pin) || "26788");
     const params = new URLSearchParams(location.search);
     // رابط الضيوف فقط: vote.html?guest=1 — لا يظهر خيار على الشاشة حتى لا تلتف الطالبات
     if (params.get("guest") === "1") localStorage.setItem(GUEST_KEY, "1");

@@ -9,7 +9,7 @@ const SHOW = {
   subtitle: "الإدارة العامة × تكنولوجيا المعلومات",
   line: "لقاء أقرب إلى مقابلة حيّة منه إلى عرض شرائح. الإدارة تتحدث بلغة الاستراتيجية، والتقنية ترد بلغة البنية التحتية.",
   vote: {
-    pin: "4826",
+    pin: "26788",
     seconds: 12,
     // احتياطي قديم — بعد تفعيل Firebase لن يُستخدم للـ QR
     gasUrl: "https://script.google.com/macros/s/AKfycbyxxAB99a_5ZIoKbaiszRinn_0z0UBWpKWEbTIC7tdHxJLszyqoj0dO1KTZgMnQ3AcfHA/exec",
