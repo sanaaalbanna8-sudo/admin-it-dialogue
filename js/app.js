@@ -209,11 +209,12 @@
     count.textContent = `${state.slide + 1} من ${SLIDES.length}`;
     chapter.textContent = chapterOf(slide);
     nextBtn.textContent = "التالي";
-    document.body.classList.toggle("is-finale", slide.type === "finale");
+    document.body.classList.toggle("is-finale", slide.type === "finale" || slide.type === "closing");
+    document.body.classList.toggle("is-closing", slide.type === "closing");
     document.body.classList.toggle("is-round", slide.type === "round");
     document.body.classList.toggle("is-host", canDrive());
     document.body.classList.toggle("is-follow", !canDrive());
-    nextBtn.hidden = slide.type === "finale" || !canDrive();
+    nextBtn.hidden = slide.type === "closing" || !canDrive();
     const role = document.querySelector("[data-role]");
     if (role) {
       role.hidden = !synced();
@@ -228,6 +229,7 @@
     else if (slide.type === "map") app.innerHTML = mapView();
     else if (slide.type === "round") app.innerHTML = roundView(slide.id);
     else if (slide.type === "finale") app.innerHTML = finaleView();
+    else if (slide.type === "closing") app.innerHTML = closingView();
 
     bindSlide();
     app.focus({ preventScroll: true });
@@ -239,6 +241,7 @@
     if (slide.type === "title") return SHOW.school;
     if (slide.type === "map") return "خريطة اللقاء";
     if (slide.type === "finale") return "سؤال الختام";
+    if (slide.type === "closing") return "كلمة الختام";
     return ROUNDS[slide.id].act;
   }
 
@@ -421,6 +424,20 @@
           ${canDrive() ? `<button type="button" class="vote-go" data-start-vote>ابدأ التصويت</button>` : ""}
           <p class="k-wait">سؤال الختام للطالبات. اضغطوا ابدأ التصويت عندما تكون القاعة جاهزة.</p>
         </div>
+      </section>`;
+  }
+
+  function closingView() {
+    return `
+      <section class="slide finale closing">
+        <div class="finale-photo" aria-hidden="true"></div>
+        <div class="crest finale-crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
+        <strong class="school-name">${SHOW.school}</strong>
+        <div class="kicker">نغلق الميكروفون ولا نغلق السؤال</div>
+        <p class="closing-quote">
+          <span>يمكن أن يكون القائد رقمياً دون أن يتقن كل الأدوات.</span>
+          <strong>يكون القائد رقمياً عندما يعي أثر ما يوقّع عليه.</strong>
+        </p>
       </section>`;
   }
 
@@ -688,7 +705,7 @@
     if (state.slide < SLIDES.length - 1) {
       slideDir = 1;
       state.slide += 1;
-      if (current().type === "finale") soundFinale();
+      if (current().type === "closing") soundFinale();
       else soundNext();
       render();
     }

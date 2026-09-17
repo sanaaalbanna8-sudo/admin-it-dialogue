@@ -1109,8 +1109,50 @@ input[type="range"] { width: 100%; accent-color: var(--admin); }
 .take .t { background: var(--tech-bg); border: 1px solid var(--tech-line); }
 .take .a .role-kicker { color: var(--admin); }
 .take .t .role-kicker { color: var(--tech); }
+
+.closing {
+  gap: 18px;
+  justify-content: center;
+}
+.closing .kicker {
+  color: #e0b34a;
+  letter-spacing: .14em;
+  font-weight: 900;
+  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+}
+.closing-quote {
+  margin: 8px auto 0;
+  max-width: min(92vw, 22ch);
+  display: grid;
+  gap: 18px;
+  text-align: center;
+}
+.closing-quote span,
+.closing-quote strong {
+  display: block;
+  font-family: var(--display);
+  line-height: 1.45;
+  text-wrap: balance;
+}
+.closing-quote span {
+  font-size: clamp(1.55rem, 3.6vw, 2.55rem);
+  font-weight: 800;
+  color: #fff8ea;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.55);
+}
+.closing-quote strong {
+  font-size: clamp(1.85rem, 4.4vw, 3.15rem);
+  font-weight: 900;
+  color: #e8c56a;
+  text-shadow: 0 0 40px rgba(232, 197, 106, 0.35), 0 6px 30px rgba(0, 0, 0, 0.6);
+  animation: closingGlow 2.8s ease-in-out infinite;
+}
+@keyframes closingGlow {
+  50% { text-shadow: 0 0 52px rgba(232, 197, 106, 0.55), 0 6px 30px rgba(0, 0, 0, 0.6); }
+}
+
 body.is-finale .dock { justify-content: center; }
-body.is-finale [data-next],
+body.is-closing [data-next],
 body.is-finale [data-reveal] { display: none; }
 
 .overlay {

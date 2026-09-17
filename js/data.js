@@ -76,6 +76,7 @@ const SLIDES = [
   { type: "round", id: 23 },
   ...[5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].map((id) => ({ type: "round", id })),
   { type: "finale" },
+  { type: "closing" },
 ];
 
 const ROUNDS = {
