@@ -105,51 +105,77 @@
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
   function soundWarn() { tone(196, 0.09, "square", 0.03); setTimeout(() => tone(160, 0.1, "square", 0.022), 90); }
 
-  // ملف صوت جاهز — أوثق من Oscillator على شاشات القاعة
-  const voteGoAudio = HOST ? null : new Audio(`audio/vote-go.wav?v=1`);
-  if (voteGoAudio) {
-    voteGoAudio.preload = "auto";
-    voteGoAudio.volume = 1;
-  }
+  // ستينغ أخبار (~2.8 ث) — مثل جسر نشرات الأخبار، أطول شوي
+  const voteGoEl = document.getElementById("vote-go-audio");
+  const unlockEl = document.getElementById("audio-unlock");
   let lastGoUntil = 0;
+  let pendingGoUntil = 0;
+  let audioArmed = HOST; // المضيفة عندها لمسة زر «ابدأ»
 
-  function soundVoteGo() {
-    if (HOST || state.muted) return;
-    const blast = () => {
-      try {
-        if (voteGoAudio) {
-          voteGoAudio.pause();
-          voteGoAudio.currentTime = 0;
-          const p = voteGoAudio.play();
-          if (p && p.catch) p.catch(() => { /* fallback below */ });
-        }
-      } catch { /* ignore */ }
-      // احتياط Web Audio بنفس اللحظة
-      tone(520, 0.11, "square", 0.12);
-      setTimeout(() => tone(660, 0.12, "square", 0.13), 100);
-      setTimeout(() => tone(784, 0.14, "square", 0.14), 210);
-      setTimeout(() => tone(1040, 0.28, "sawtooth", 0.12, 200), 340);
-      setTimeout(() => tone(1310, 0.45, "triangle", 0.1), 520);
-    };
+  function playVoteGoFile() {
+    if (state.muted) return false;
     try {
-      const a = ctx();
-      if (a.state === "suspended") {
-        a.resume().then(blast).catch(blast);
-        setTimeout(blast, 400);
-      } else {
-        blast();
-      }
+      if (!voteGoEl) return false;
+      voteGoEl.muted = false;
+      voteGoEl.volume = 1;
+      voteGoEl.pause();
+      voteGoEl.currentTime = 0;
+      const p = voteGoEl.play();
+      if (p && p.catch) p.catch(() => {});
+      return true;
     } catch {
-      blast();
+      return false;
     }
   }
 
-  /** مرة واحدة لكل جولة تصويت (حسب until) */
-  function triggerVoteGo(until) {
+  function soundVoteGo() {
+    if (state.muted) return;
+    playVoteGoFile();
+    // احتياط نغمي على شاشة القاعة فقط
+    if (HOST) return;
+    tone(523, 0.1, "square", 0.1);
+    setTimeout(() => tone(659, 0.1, "square", 0.11), 120);
+    setTimeout(() => tone(784, 0.12, "square", 0.12), 240);
+    setTimeout(() => tone(1046, 0.35, "sawtooth", 0.1, 220), 380);
+  }
+
+  /** مرة لكل جولة على شاشة العرض — المضيفة تشغّل من زر ابدأ */
+  function triggerVoteGo(until, force) {
+    if (HOST) return;
     const key = Number(until || 0);
-    if (!key || key === lastGoUntil) return;
+    if (!key) return;
+    if (!force && key === lastGoUntil) return;
+    if (!audioArmed) {
+      pendingGoUntil = key;
+      return;
+    }
     lastGoUntil = key;
+    pendingGoUntil = 0;
     soundVoteGo();
+  }
+
+  /** تفاعلات طافية خفيفة (ستايل لايف) — حد أقصى حتى ما تثقل الشاشة */
+  function burstVoteFx(host, delta) {
+    const layer = host.querySelector("[data-vote-fx]");
+    if (!layer) return;
+    const cols = host.querySelectorAll(".v-col");
+    if (!cols.length) return;
+    const n = Math.min(4, Math.max(1, Number(delta) || 1));
+    for (let i = 0; i < n; i++) {
+      if (layer.childElementCount >= 16) break;
+      const col = cols[Math.floor(Math.random() * cols.length)];
+      const letter = (col.querySelector("em") || {}).textContent || "•";
+      const color = col.style.getPropertyValue("--k") || "#c9a56a";
+      const el = document.createElement("span");
+      el.className = "vote-fx-item";
+      el.style.setProperty("--x", `${8 + Math.random() * 84}%`);
+      el.style.setProperty("--k", color.trim());
+      el.style.setProperty("--drift", `${-48 + Math.random() * 96}px`);
+      el.style.setProperty("--dur", `${1.15 + Math.random() * 0.7}s`);
+      el.textContent = letter;
+      layer.appendChild(el);
+      el.addEventListener("animationend", () => el.remove(), { once: true });
+    }
   }
 
   let lastVotes = 0;
@@ -315,6 +341,7 @@
         </div>
       </div>`).join("");
     return `<div class="kahoot is-ready${n >= 5 ? " has-many" : ""}" data-poll="${id}">
+      <div class="vote-fx" data-vote-fx aria-hidden="true"></div>
       <div class="k-head">
         <div class="k-clock"><strong data-k-clock>${SHOW.vote.seconds}</strong><small>ثانية</small></div>
         <div>
@@ -378,6 +405,7 @@
         </div>
         <p class="finale-q">${poll.q}</p>
         <div class="kahoot finale-kahoot is-ready" data-poll="finale">
+          <div class="vote-fx" data-vote-fx aria-hidden="true"></div>
           <div class="k-head">
             <div class="k-clock"><strong data-k-clock>${SHOW.vote.seconds}</strong><small>ثانية</small></div>
             <div>
@@ -412,7 +440,10 @@
         : String(SHOW.vote.seconds);
       if (ready) clockEl.textContent = String(SHOW.vote.seconds);
     }
-    if (sum > lastVotes && voting) soundVote();
+    if (sum > lastVotes && voting) {
+      soundVote();
+      burstVoteFx(host, sum - lastVotes);
+    }
     lastVotes = sum;
     const left = remaining == null ? 99 : Math.max(0, remaining);
     if (voting && left <= 3 && left > 0 && left < lastRemain) soundWarn();
@@ -591,6 +622,11 @@
         started = true;
         lastRemain = 99;
         lastVotes = 0;
+        // لمسة المضيفة تفتح قفل الصوت وتشغّل الستينغ فوراً
+        audioArmed = true;
+        state.muted = false;
+        paintMute();
+        soundVoteGo();
         await openPoll(id);
         if (!liveOn()) tick();
       };
@@ -673,35 +709,36 @@
     save();
   };
 
-  // شاشة العرض فقط: لمسة واحدة تفتح قفل الصوت في المتصفح
+  // شاشة العرض: لمسة واحدة تفتح قفل الصوت في المتصفح
   document.body.dataset.device = HOST ? "host" : "display";
 
   function armDisplayAudio() {
-    if (HOST || document.body.dataset.audioReady === "1") return;
+    if (HOST || audioArmed) return;
     try {
       state.muted = false;
       paintMute();
       save();
       ctx();
-      // فتح قفل تشغيل ملف الصوت (مهم لمتصفحات الشاشات)
-      if (voteGoAudio) {
-        voteGoAudio.muted = true;
-        const unlock = voteGoAudio.play();
+      if (unlockEl) {
+        unlockEl.muted = true;
+        const unlock = unlockEl.play();
         if (unlock && unlock.then) {
           unlock.then(() => {
-            voteGoAudio.pause();
-            voteGoAudio.currentTime = 0;
-            voteGoAudio.muted = false;
-          }).catch(() => { voteGoAudio.muted = false; });
+            unlockEl.pause();
+            unlockEl.currentTime = 0;
+            unlockEl.muted = false;
+          }).catch(() => { unlockEl.muted = false; });
         } else {
-          voteGoAudio.muted = false;
+          unlockEl.muted = false;
         }
       }
+      audioArmed = true;
       document.body.dataset.audioReady = "1";
       const tip = document.querySelector("[data-audio-arm]");
       if (tip) tip.remove();
       tone(660, 0.14, "sine", 0.1);
       setTimeout(() => tone(990, 0.22, "triangle", 0.09), 130);
+      if (pendingGoUntil) triggerVoteGo(pendingGoUntil, true);
     } catch { /* ignore */ }
   }
 
