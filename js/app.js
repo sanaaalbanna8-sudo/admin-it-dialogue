@@ -154,34 +154,24 @@
     soundVoteGo();
   }
 
-  /** تفاعلات طافية — حرف ولون الخيار اللي زاد فعلياً */
+  /** تفاعلات طافية — حرف ولون الخيار اللي زاد، والموقع عشوائي على الشاشة */
   function burstVoteFx(host, gains) {
     const layer = host.querySelector("[data-vote-fx]");
     if (!layer || !gains || !gains.length) return;
     const cols = [...host.querySelectorAll(".v-col")];
     if (!cols.length) return;
-    const grid = host.querySelector(".v-grid");
-    const gridBox = grid ? grid.getBoundingClientRect() : host.getBoundingClientRect();
     gains.forEach(({ opt, n }) => {
       const col = cols.find((c) => c.dataset.opt === opt) || cols[0];
       const letter = (col.querySelector("em") || {}).textContent || "•";
       const color = col.style.getPropertyValue("--k") || "#c9a56a";
-      let xPct = 50;
-      try {
-        const box = col.getBoundingClientRect();
-        if (gridBox.width > 0) {
-          xPct = ((box.left + box.width / 2 - gridBox.left) / gridBox.width) * 100;
-          xPct = Math.max(8, Math.min(92, xPct + (Math.random() * 10 - 5)));
-        }
-      } catch { /* ignore */ }
       const count = Math.min(3, Math.max(1, Number(n) || 1));
       for (let i = 0; i < count; i++) {
         if (layer.childElementCount >= 16) return;
         const el = document.createElement("span");
         el.className = "vote-fx-item";
-        el.style.setProperty("--x", `${xPct + (Math.random() * 6 - 3)}%`);
+        el.style.setProperty("--x", `${8 + Math.random() * 84}%`);
         el.style.setProperty("--k", color.trim());
-        el.style.setProperty("--drift", `${-28 + Math.random() * 56}px`);
+        el.style.setProperty("--drift", `${-48 + Math.random() * 96}px`);
         el.style.setProperty("--dur", `${1.15 + Math.random() * 0.7}s`);
         el.textContent = letter;
         layer.appendChild(el);
