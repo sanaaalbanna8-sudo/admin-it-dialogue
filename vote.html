@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>صوّت | طاولة القرار v-lock3</title>
+  <title>صوّت | طاولة القرار v-lock4</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; }
@@ -81,7 +81,7 @@
     <div class="crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
     <div class="brand">طاولة القرار</div>
     <h1>أكاديمية ساندس الوطنية</h1>
-    <p class="meta">ابقوا على هذه الصفحة طوال الجلسة. مغادرة الصفحة تقفل التصويت ويحتاج فتحه من المعلمة.</p>
+    <p class="meta">اتركوا الصفحة مفتوحة. إطفاء الشاشة بين الجولات مسموح — المغادرة أثناء العدّ التنازلي فقط تحتاج كلمة سر المعلمة.</p>
   </div>
   <div id="app"></div>
   <div class="guard" id="guard" aria-live="assertive">
@@ -97,8 +97,8 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/firebase-config.js?v=lock3"></script>
-  <script src="js/live.js?v=lock3"></script>
+  <script src="js/firebase-config.js?v=lock4"></script>
+  <script src="js/live.js?v=lock4"></script>
   <script src="js/data.js?v=pin2"></script>
   <script>
     const LETTERS = ["أ", "ب", "ج", "د", "هـ"];
@@ -295,6 +295,12 @@
       if (tip) tip.textContent = "وضع الضيف: يمكنكم البقاء على الصفحة للتصويت مع الجلسة.";
     }
 
+    /** التصويت مفتوح والعدّ يشتغل — هون فقط نعتبر المغادرة غش */
+    function isVoteLive() {
+      const d = lastData;
+      return Boolean(d && d.active && d.open && Number(d.remaining || 0) > 0);
+    }
+
     function isLockedLocal() {
       return localStorage.getItem(LOCK_KEY) === "1"
         || sessionStorage.getItem(LOCK_KEY) === "1"
@@ -325,6 +331,12 @@
       }
     }
 
+    /** فك القفل التلقائي إذا رجعوا وما في عدّ تنازلي حي (إطفاء شاشة / تركيز بالحوار) */
+    function releaseIfIdle() {
+      if (isGuest) return;
+      if (isLockedLocal() && !isVoteLive()) setLocked(false);
+    }
+
     document.getElementById("btn-unlock").onclick = () => {
       if (String(lockPin.value).trim() === PIN) {
         setLocked(false);
@@ -339,15 +351,16 @@
     });
 
     function markLeftSoon() {
-      if (isGuest) return;
+      // إطفاء الشاشة أو تجاهل التلفون بين الجولات = عادي، ما بنقفل
+      if (isGuest || !isVoteLive()) return;
       clearTimeout(leaveTimer);
       leaveTimer = setTimeout(() => {
-        if (document.hidden) setLocked(true);
-      }, 400);
+        if (document.hidden && isVoteLive()) setLocked(true);
+      }, 800);
     }
-    // إغلاق التبويب/المتصفح يقفل فوراً (بدون انتظار 400ms)
+    // إغلاق التبويب أثناء العدّ فقط — pagehide على الموبايل بيصير كمان عند قفل الشاشة
     function lockOnLeave() {
-      if (isGuest) return;
+      if (isGuest || !isVoteLive()) return;
       try {
         localStorage.setItem(LOCK_KEY, "1");
         sessionStorage.setItem(LOCK_KEY, "1");
@@ -358,16 +371,21 @@
     document.addEventListener("visibilitychange", () => {
       if (isGuest) return;
       if (document.hidden) markLeftSoon();
-      else clearTimeout(leaveTimer);
+      else {
+        clearTimeout(leaveTimer);
+        releaseIfIdle();
+      }
     });
     window.addEventListener("pagehide", lockOnLeave);
     window.addEventListener("beforeunload", lockOnLeave);
 
     const _paint = paint;
     paint = function (incoming) {
+      if (incoming) lastData = incoming;
+      // انتهى العدّ وهم مقفلين بسبب إطفاء الشاشة سابقاً → افتح تلقائي
+      releaseIfIdle();
       if (isLocked()) {
         guard.classList.add("on");
-        if (incoming) lastData = incoming;
         return;
       }
       _paint(incoming);
@@ -380,6 +398,7 @@
           if (await Live.isDeviceLocked(voter)) setLocked(true);
         } catch { /* offline */ }
       }
+      // القفل القديم من إطفاء الشاشة ينفك بعد أول تحديث للحالة (مو هون قبل معرفة العدّ)
       if (isLocked()) setLocked(true);
       boot();
     })();
