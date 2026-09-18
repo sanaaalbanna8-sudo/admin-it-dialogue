@@ -230,6 +230,7 @@
 
   function render() {
     const slide = current();
+    const prevSlideForCue = render._cueSlide;
     const last = SLIDES.length - 1;
     progress.style.width = `${(state.slide / last) * 100}%`;
     count.textContent = `${state.slide + 1} من ${SLIDES.length}`;
@@ -261,6 +262,12 @@
     app.focus({ preventScroll: true });
     save();
     if (canDrive() && synced()) pushShow();
+
+    // مزامنة ملاحظات جود مع شريحة العرض عند الانتقال (مش مع كل إعادة رسم)
+    if (HOST && cueHasData && prevSlideForCue !== state.slide) {
+      syncCueToSlide();
+    }
+    render._cueSlide = state.slide;
   }
 
   function chapterOf(slide) {
@@ -952,9 +959,7 @@
     document.body.classList.add("is-cue-open");
     if (cueToggleBtn) cueToggleBtn.classList.add("is-active");
     save();
-    renderCue();
-    // محاولة إلقاء الضوء على البطاقة المناسبة بناءً على الشريحة الحالية
-    autoSuggestCue();
+    syncCueToSlide();
   }
   function closeCue() {
     if (!cueSidebar) return;
@@ -986,8 +991,8 @@
     }
   }
 
-  // اقتراح تلقائي لرقم البطاقة بناءً على شريحة العرض الحالية
-  function autoSuggestCue() {
+  // مزامنة بطاقة الملاحظات مع شريحة العرض الحالية
+  function syncCueToSlide() {
     if (!cueHasData) return;
     const slide = current();
     if (!slide) return;
@@ -998,15 +1003,14 @@
     else if (slide.type === "closing") targetIdx = cueTotal() - 1;
     else if (slide.type === "round") {
       const rid = slide.id;
-      // البحث عن أول بطاقة بهذا الـ roundId وننتقل لها
       const idx = window.CUE_CARDS.findIndex((c) => c.roundId === rid);
       if (idx >= 0) targetIdx = idx;
     }
     if (targetIdx != null && targetIdx !== state.cue.index) {
       state.cue.index = targetIdx;
       save();
-      renderCue();
     }
+    if (state.cue.open) renderCue();
   }
 
   if (HOST && cueHasData) {
