@@ -34,9 +34,10 @@
   function synced() { return liveOn() || Boolean(gasUrl()); }
   function canDrive() { return HOST || !synced(); }
   function roundCount() { return SLIDES.filter((s) => s.type === "round").length; }
-  function arDigits(n) {
-    return String(n).replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
+  function toLatinDigits(s) {
+    return String(s ?? "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
   }
+  const arDigits = toLatinDigits;
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORAGE) || ""); } catch { return null; }
@@ -1026,6 +1027,22 @@
   }, 500);
 
   paintMute();
+
+  (function sanitizeIndicDigits() {
+    const map = { "٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9" };
+    const fixStr = (s) => String(s ?? "").replace(/[٠-٩]/g, (d) => map[d] || d);
+    const walk = (root) => {
+      const ni = document.createNodeIterator(root, NodeFilter.SHOW_TEXT, null);
+      let n; while ((n = ni.nextNode())) { if (n.nodeValue) n.nodeValue = fixStr(n.nodeValue); }
+      root.querySelectorAll && root.querySelectorAll("[data-pct],[data-k-total],[data-slide-count]").forEach((el) => {
+        if (el.dataset.n != null) el.dataset.n = fixStr(el.dataset.n);
+      });
+    };
+    walk(document.body);
+    const mo = new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => walk(n))));
+    mo.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  })();
+
   const crest = '<img class="ticker-crest" src="img/sands-logo.png" alt="" />';
   const tickerLine = SHOW.ticker.map((t) => `<span>${t}</span>${crest}`).join("");
   document.querySelector("[data-ticker]").innerHTML = `${tickerLine}${tickerLine}`;

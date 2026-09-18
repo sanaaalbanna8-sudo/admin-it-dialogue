@@ -16,6 +16,14 @@
 }
 
 * { box-sizing: border-box; }
+
+html, body, * {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  -moz-font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
 html, body { margin: 0; background: var(--stage); color: var(--ink); }
 html { scroll-behavior: smooth; height: 100%; }
 body {
