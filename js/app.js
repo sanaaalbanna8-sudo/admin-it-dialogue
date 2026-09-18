@@ -108,30 +108,43 @@
     setTimeout(() => tone(392, 0.45, "triangle", 0.02), 520);
   }
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
-  /** تكت العدّ التنازلي — ناعم طول الوقت، وأوضح شوي في آخر 3 ثوانٍ */
-  function soundTick(left) {
-    if (left <= 3) {
-      tone(520, 0.07, "sine", 0.028);
-      setTimeout(() => tone(390, 0.09, "triangle", 0.022), 55);
-      return;
-    }
-    tone(880, 0.035, "sine", 0.012);
-    setTimeout(() => tone(660, 0.045, "triangle", 0.01), 28);
-  }
 
-  // ستينغ بدء التصويت — حجم مخفّف + احتياط ناعم بدل الموجات الحادة
+  // ملفات صوتية — نفس مسار ستينغ البدء (HTML audio يشتغل على شاشة القاعة)
   const voteGoEl = document.getElementById("vote-go-audio");
   const unlockEl = document.getElementById("audio-unlock");
+  const tickEl = document.getElementById("tick-audio");
+  const tickUrgentEl = document.getElementById("tick-urgent-audio");
   let lastGoUntil = 0;
   let pendingGoUntil = 0;
   let audioArmed = HOST; // المضيفة عندها لمسة زر «ابدأ»
+
+  function playHtmlAudio(el, vol) {
+    if (HOST || state.muted || !el) return false;
+    try {
+      el.muted = false;
+      el.volume = vol;
+      el.pause();
+      el.currentTime = 0;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** تكت كل ثانية عبر ملف صوتي (مو Web Audio المكتوم غالباً) */
+  function soundTick(left) {
+    if (left <= 3) playHtmlAudio(tickUrgentEl, 0.85);
+    else playHtmlAudio(tickEl, left <= 5 ? 0.72 : 0.55);
+  }
 
   function playVoteGoFile() {
     if (state.muted) return false;
     try {
       if (!voteGoEl) return false;
       voteGoEl.muted = false;
-      voteGoEl.volume = 0.42;
+      voteGoEl.volume = 0.7;
       voteGoEl.pause();
       voteGoEl.currentTime = 0;
       const p = voteGoEl.play();
@@ -145,11 +158,11 @@
   function soundVoteGo() {
     if (state.muted) return;
     const played = playVoteGoFile();
-    // احتياط ناعم على شاشة القاعة فقط إذا الملف ما اشتغل
+    // احتياط ناعم على شاشة القاعة إذا الملف ما اشتغل
     if (HOST || played) return;
-    tone(392, 0.14, "sine", 0.028);
-    setTimeout(() => tone(523, 0.16, "triangle", 0.026), 110);
-    setTimeout(() => tone(659, 0.22, "sine", 0.024), 230);
+    tone(392, 0.16, "sine", 0.04);
+    setTimeout(() => tone(523, 0.18, "triangle", 0.036), 120);
+    setTimeout(() => tone(659, 0.28, "sine", 0.032), 250);
   }
 
   /** مرة لكل جولة على شاشة العرض — المضيفة تشغّل من زر ابدأ */
@@ -635,6 +648,8 @@
       const data = viewOf(raw);
       if (!data) return;
       if (data.open && data.remaining > 0) {
+        // أول دخول للعدّ — خليه يتكّ على الثانية الحالية كمان
+        if (!wasLive) lastRemain = Number(data.remaining) + 1;
         wasLive = true;
         started = true;
         triggerVoteGo(data.until);
@@ -768,19 +783,21 @@
       paintMute();
       save();
       ctx();
-      if (unlockEl) {
-        unlockEl.muted = true;
-        const unlock = unlockEl.play();
+      // فتح قفل كل ملفات الصوت (بدء + تكت) بلمسة واحدة
+      [unlockEl, tickEl, tickUrgentEl].forEach((el) => {
+        if (!el) return;
+        el.muted = true;
+        const unlock = el.play();
         if (unlock && unlock.then) {
           unlock.then(() => {
-            unlockEl.pause();
-            unlockEl.currentTime = 0;
-            unlockEl.muted = false;
-          }).catch(() => { unlockEl.muted = false; });
+            el.pause();
+            el.currentTime = 0;
+            el.muted = false;
+          }).catch(() => { el.muted = false; });
         } else {
-          unlockEl.muted = false;
+          el.muted = false;
         }
-      }
+      });
       audioArmed = true;
       document.body.dataset.audioReady = "1";
       const tip = document.querySelector("[data-audio-arm]");
