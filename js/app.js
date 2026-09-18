@@ -9,6 +9,10 @@
     slide: 0,
     widgets: saved?.widgets || {},
     muted: Boolean(saved?.muted),
+    cue: {
+      open: Boolean(saved?.cue?.open),
+      index: Number(saved?.cue?.index) || 0,
+    },
   };
   const app = document.getElementById("app");
   const progress = document.querySelector("[data-progress]");
@@ -813,7 +817,181 @@
       const go = app.querySelector("[data-start-vote]");
       if (go && !go.hidden && !go.disabled) { e.preventDefault(); go.click(); }
     }
+    // ====== اختصارات ملاحظات المذيعة (HOST فقط) ======
+    if (HOST) {
+      if (e.key.toLowerCase() === "c") { e.preventDefault(); toggleCue(); }
+      if (state.cue.open) {
+        if (e.key === "ArrowDown") { e.preventDefault(); cueNext(); }
+        if (e.key === "ArrowUp") { e.preventDefault(); cuePrev(); }
+        if (e.key === "Escape") { e.preventDefault(); closeCue(); }
+      }
+    }
   });
+
+  // ========================================================
+  // 🎙️ ملاحظات المذيعة جود — Cue Cards Sidebar (HOST فقط)
+  // ========================================================
+  const cueSidebar = document.querySelector("[data-cue-sidebar]");
+  const cueBody = document.querySelector("[data-cue-side-body]");
+  const cueStep = document.querySelector("[data-cue-side-step]");
+  const cueProgress = document.querySelector("[data-cue-side-progress]");
+  const cueDots = document.querySelector("[data-cue-side-dots]");
+  const cueToggleBtn = document.querySelector("[data-toggle-cues]");
+  const cueHasData = Boolean(window.CUE_CARDS && Array.isArray(window.CUE_CARDS) && window.CUE_CARDS.length);
+
+  // إخفاء زر ملاحظات المذيعة إذا لم نكن في وضع HOST أو لا توجد بيانات
+  if (!HOST || !cueHasData) {
+    if (cueToggleBtn) cueToggleBtn.style.display = "none";
+    if (cueSidebar) cueSidebar.style.display = "none";
+  } else {
+    if (cueToggleBtn) cueToggleBtn.style.display = "grid";
+  }
+
+  function cueTotal() { return cueHasData ? window.CUE_CARDS.length : 0; }
+  function cueCurrent() { return cueHasData ? window.CUE_CARDS[state.cue.index] : null; }
+
+  function cueTypeMeta(type) {
+    const map = {
+      "opening":           { icon: "🏛️", label: "افتتاحية", cls: "cue-opening" },
+      "audience-greeting": { icon: "👋", label: "ترحيب بالحضور", cls: "cue-greeting" },
+      "explanation":       { icon: "💡", label: "شرح وآلية", cls: "cue-explain" },
+      "vote-call":         { icon: "📊", label: "دعوة للتصويت", cls: "cue-vote" },
+      "results-comment":   { icon: "📈", label: "تعليق على النتائج", cls: "cue-results" },
+      "admin-intro":       { icon: "🎤", label: "مقدمة سؤال الإدارة", cls: "cue-admin" },
+      "transition-to-tolleen": { icon: "🔄", label: "تحويل لتولين", cls: "cue-transition" },
+      "finale-intro":      { icon: "🌟", label: "مقدمة الختام", cls: "cue-finale" },
+      "closing":           { icon: "✨", label: "كلمة ختام", cls: "cue-closing" },
+    };
+    return map[type] || { icon: "📝", label: type, cls: "cue-default" };
+  }
+
+  function renderCue() {
+    if (!HOST || !cueHasData || !cueSidebar) return;
+    const total = cueTotal();
+    const last = total - 1;
+    state.cue.index = Math.max(0, Math.min(state.cue.index, last));
+    const card = cueCurrent();
+    if (!card) return;
+
+    if (cueStep) cueStep.textContent = `الخطوة ${state.cue.index + 1} من ${total}`;
+    if (cueProgress) cueProgress.style.width = `${((state.cue.index + 1) / total) * 100}%`;
+
+    const meta = cueTypeMeta(card.type);
+    const contentHtml = Array.isArray(card.content)
+      ? card.content.map((line) => line ? `<p>${escapeHtml(line)}</p>` : `<div class="s-cue-gap"></div>`).join("")
+      : `<p>${escapeHtml(card.content || "")}</p>`;
+    const noteHtml = card.note ? `<div class="s-cue-note">📌 ${escapeHtml(card.note)}</div>` : "";
+    const subHtml = card.subtitle ? `<div class="s-cue-sub">${escapeHtml(card.subtitle)}</div>` : "";
+
+    cueBody.innerHTML = `
+      <article class="s-cue-card ${meta.cls}">
+        <div class="s-cue-head">
+          <span class="s-cue-group">${escapeHtml(card.group || "")}</span>
+          <span class="s-cue-type">${meta.icon} ${meta.label}</span>
+        </div>
+        <h3 class="s-cue-title">${escapeHtml(card.title || "")}</h3>
+        ${subHtml}
+        ${noteHtml}
+        <div class="s-cue-body">${contentHtml}</div>
+        <div class="s-cue-foot">
+          <span class="s-cue-idx">${String(state.cue.index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}</span>
+          <span class="s-cue-label">${escapeHtml(card.label || "")}</span>
+        </div>
+      </article>
+    `;
+
+    // النقاط
+    if (cueDots) {
+      cueDots.innerHTML = window.CUE_CARDS.map((c, i) => {
+        const active = i === state.cue.index;
+        const gap = i > 0 && window.CUE_CARDS[i].group !== window.CUE_CARDS[i - 1].group;
+        return `
+          ${gap ? '<span class="s-dot-gap"></span>' : ""}
+          <button type="button" class="s-cue-dot ${active ? "is-active" : ""}" data-cue-jump="${i}" title="${escapeHtml(c.label || c.title || "")}">
+            ${cueTypeMeta(c.type).icon}
+          </button>
+        `;
+      }).join("");
+      cueDots.querySelectorAll("[data-cue-jump]").forEach((el) => {
+        el.onclick = () => { state.cue.index = Number(el.dataset.cueJump); save(); renderCue(); };
+      });
+    }
+  }
+
+  function openCue() {
+    if (!HOST || !cueHasData || !cueSidebar) return;
+    state.cue.open = true;
+    cueSidebar.hidden = false;
+    cueSidebar.setAttribute("aria-hidden", "false");
+    document.body.classList.add("is-cue-open");
+    if (cueToggleBtn) cueToggleBtn.classList.add("is-active");
+    save();
+    renderCue();
+    // محاولة إلقاء الضوء على البطاقة المناسبة بناءً على الشريحة الحالية
+    autoSuggestCue();
+  }
+  function closeCue() {
+    if (!cueSidebar) return;
+    state.cue.open = false;
+    cueSidebar.hidden = true;
+    cueSidebar.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("is-cue-open");
+    if (cueToggleBtn) cueToggleBtn.classList.remove("is-active");
+    save();
+  }
+  function toggleCue() {
+    if (state.cue.open) closeCue();
+    else openCue();
+  }
+  function cueNext() {
+    if (!cueHasData) return;
+    if (state.cue.index < cueTotal() - 1) {
+      state.cue.index += 1;
+      save();
+      renderCue();
+    }
+  }
+  function cuePrev() {
+    if (!cueHasData) return;
+    if (state.cue.index > 0) {
+      state.cue.index -= 1;
+      save();
+      renderCue();
+    }
+  }
+
+  // اقتراح تلقائي لرقم البطاقة بناءً على شريحة العرض الحالية
+  function autoSuggestCue() {
+    if (!cueHasData) return;
+    const slide = current();
+    if (!slide) return;
+    let targetIdx = null;
+    if (slide.type === "title") targetIdx = 0;
+    else if (slide.type === "map") targetIdx = 5;
+    else if (slide.type === "finale") targetIdx = cueTotal() - 4;
+    else if (slide.type === "closing") targetIdx = cueTotal() - 1;
+    else if (slide.type === "round") {
+      const rid = slide.id;
+      // البحث عن أول بطاقة بهذا الـ roundId وننتقل لها
+      const idx = window.CUE_CARDS.findIndex((c) => c.roundId === rid);
+      if (idx >= 0) targetIdx = idx;
+    }
+    if (targetIdx != null && targetIdx !== state.cue.index) {
+      state.cue.index = targetIdx;
+      save();
+      renderCue();
+    }
+  }
+
+  if (HOST && cueHasData) {
+    if (cueToggleBtn) cueToggleBtn.onclick = toggleCue;
+    const n = document.querySelector("[data-cue-next]"); if (n) n.onclick = cueNext;
+    const p = document.querySelector("[data-cue-prev]"); if (p) p.onclick = cuePrev;
+    const x = document.querySelector("[data-cue-close]"); if (x) x.onclick = closeCue;
+    // فتح تلقائي إذا كان مفتوحاً في الجلسة السابقة
+    if (state.cue.open) openCue();
+    else closeCue();
+  }
 
   function followShow(data) {
     if (!data || data.ok === false) return;
