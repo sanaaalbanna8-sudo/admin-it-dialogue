@@ -870,6 +870,10 @@
   const cueProgress = document.querySelector("[data-cue-side-progress]");
   const cueDots = document.querySelector("[data-cue-side-dots]");
   const cueToggleBtn = document.querySelector("[data-toggle-cues]");
+  const cueSlideRail = document.querySelector("[data-cue-slide-rail]");
+  const cueSlideFill = document.querySelector("[data-cue-slide-fill]");
+  const cueSlideMsg = document.querySelector("[data-cue-slide-msg]");
+  const cueSlidePips = document.querySelector("[data-cue-slide-pips]");
   const cueHasData = Boolean(window.CUE_CARDS && Array.isArray(window.CUE_CARDS) && window.CUE_CARDS.length);
 
   // إخفاء زر ملاحظات المذيعة إذا لم نكن في وضع HOST أو لا توجد بيانات
@@ -882,6 +886,76 @@
 
   function cueTotal() { return cueHasData ? window.CUE_CARDS.length : 0; }
   function cueCurrent() { return cueHasData ? window.CUE_CARDS[state.cue.index] : null; }
+
+  /** أول بطاقة ملاحظات المرتبطة بشريحة العرض */
+  function cueStartForSlide(slide) {
+    if (!slide || !cueHasData) return 0;
+    if (slide.type === "title") return 0;
+    if (slide.type === "map") return 5;
+    if (slide.type === "finale") return Math.max(0, cueTotal() - 4);
+    if (slide.type === "closing") return Math.max(0, cueTotal() - 1);
+    if (slide.type === "round") {
+      const idx = window.CUE_CARDS.findIndex((c) => c.roundId === slide.id);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  }
+
+  /** نطاق ملاحظات الشريحة الحالية (من → إلى) */
+  function cueRangeForSlide(slide) {
+    if (!slide || !cueHasData) return null;
+    const start = cueStartForSlide(slide);
+    let end = cueTotal() - 1;
+    const si = SLIDES.indexOf(slide);
+    for (let s = si + 1; s < SLIDES.length; s++) {
+      const nextStart = cueStartForSlide(SLIDES[s]);
+      if (nextStart > start) {
+        end = nextStart - 1;
+        break;
+      }
+    }
+    if (end < start) end = start;
+    return { start, end, count: end - start + 1 };
+  }
+
+  function paintCueSlideRail() {
+    if (!cueSlideRail) return;
+    const range = cueRangeForSlide(current());
+    if (!range) {
+      cueSlideRail.hidden = true;
+      return;
+    }
+    const pos = Math.min(range.end, Math.max(range.start, state.cue.index));
+    const step = pos - range.start + 1;
+    const left = Math.max(0, range.end - pos);
+    const done = left <= 0;
+    cueSlideRail.hidden = false;
+    cueSlideRail.classList.toggle("is-done", done);
+    if (cueSlideFill) cueSlideFill.style.width = `${(step / range.count) * 100}%`;
+    if (cueSlideMsg) {
+      if (range.count === 1) {
+        cueSlideMsg.textContent = "ملاحظة واحدة لهذه الشريحة — بعد ما تخلصيها جاهزة لـ «التالي» بالعرض.";
+      } else if (done) {
+        cueSlideMsg.textContent = `آخر ملاحظة لهذه الشريحة (${step} من ${range.count}) — صرتِ جاهزة لـ «التالي» بالعرض.`;
+      } else {
+        cueSlideMsg.textContent = `ملاحظة ${step} من ${range.count} لهذه الشريحة — لسا في ${left} قبل ما تكبسي «التالي» بالعرض.`;
+      }
+    }
+    if (cueSlidePips) {
+      cueSlidePips.innerHTML = "";
+      for (let i = range.start; i <= range.end; i++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cue-slide-pip";
+        if (i <= pos) btn.classList.add("is-done");
+        if (i === state.cue.index) btn.classList.add("is-active");
+        btn.dataset.cueJump = String(i);
+        btn.title = window.CUE_CARDS[i]?.label || window.CUE_CARDS[i]?.title || "";
+        btn.onclick = () => { state.cue.index = i; save(); renderCue(); };
+        cueSlidePips.appendChild(btn);
+      }
+    }
+  }
 
   function cueTypeMeta(type) {
     const map = {
@@ -935,12 +1009,15 @@
 
     // النقاط
     if (cueDots) {
+      const range = cueRangeForSlide(current());
       cueDots.innerHTML = window.CUE_CARDS.map((c, i) => {
         const active = i === state.cue.index;
         const gap = i > 0 && window.CUE_CARDS[i].group !== window.CUE_CARDS[i - 1].group;
+        const inSlide = range && i >= range.start && i <= range.end;
+        const pending = inSlide && i > state.cue.index;
         return `
           ${gap ? '<span class="s-dot-gap"></span>' : ""}
-          <button type="button" class="s-cue-dot ${active ? "is-active" : ""}" data-cue-jump="${i}" title="${escapeHtml(c.label || c.title || "")}">
+          <button type="button" class="s-cue-dot ${active ? "is-active" : ""} ${inSlide ? "is-slide-scope" : ""} ${pending ? "is-slide-pending" : ""}" data-cue-jump="${i}" title="${escapeHtml(c.label || c.title || "")}">
             ${cueTypeMeta(c.type).icon}
           </button>
         `;
@@ -949,6 +1026,8 @@
         el.onclick = () => { state.cue.index = Number(el.dataset.cueJump); save(); renderCue(); };
       });
     }
+
+    paintCueSlideRail();
   }
 
   function openCue() {
@@ -996,17 +1075,8 @@
     if (!cueHasData) return;
     const slide = current();
     if (!slide) return;
-    let targetIdx = null;
-    if (slide.type === "title") targetIdx = 0;
-    else if (slide.type === "map") targetIdx = 5;
-    else if (slide.type === "finale") targetIdx = cueTotal() - 4;
-    else if (slide.type === "closing") targetIdx = cueTotal() - 1;
-    else if (slide.type === "round") {
-      const rid = slide.id;
-      const idx = window.CUE_CARDS.findIndex((c) => c.roundId === rid);
-      if (idx >= 0) targetIdx = idx;
-    }
-    if (targetIdx != null && targetIdx !== state.cue.index) {
+    const targetIdx = cueStartForSlide(slide);
+    if (targetIdx !== state.cue.index) {
       state.cue.index = targetIdx;
       save();
     }
