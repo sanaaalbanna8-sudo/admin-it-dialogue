@@ -760,6 +760,25 @@
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     else document.exitFullscreen().catch(() => {});
   };
+
+  const unlockAllBtn = document.querySelector("[data-unlock-all]");
+  if (unlockAllBtn) {
+    unlockAllBtn.hidden = !HOST;
+    unlockAllBtn.onclick = async () => {
+      if (!HOST) return;
+      unlockAllBtn.disabled = true;
+      const label = unlockAllBtn.textContent;
+      unlockAllBtn.textContent = "جاري الفتح…";
+      try {
+        if (liveOn()) await Live.unlockAllDevices();
+      } catch { /* ignore */ }
+      unlockAllBtn.textContent = "تم فتح الكل";
+      setTimeout(() => {
+        unlockAllBtn.textContent = label;
+        unlockAllBtn.disabled = false;
+      }, 1600);
+    };
+  }
   function paintMute() {
     const btn = document.querySelector("[data-mute]");
     btn.classList.toggle("is-muted", state.muted);

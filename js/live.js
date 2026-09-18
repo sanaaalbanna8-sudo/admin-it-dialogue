@@ -192,6 +192,15 @@
     return path(`deviceLocks/${id}`).remove();
   }
 
+  /** تفتح المعلمة كل الأجهزة المقفلين دفعة واحدة */
+  function unlockAllDevices() {
+    if (!ok) return Promise.resolve();
+    return Promise.all([
+      path("deviceLocks").remove(),
+      path("control/unlockWave").set(firebase.database.ServerValue.TIMESTAMP),
+    ]);
+  }
+
   async function isDeviceLocked(id) {
     if (!ok || !id) return false;
     try {
@@ -201,6 +210,18 @@
     } catch {
       return false;
     }
+  }
+
+  /** استمع لموجة «فتح الكل» من المضيفة */
+  function onUnlockWave(cb) {
+    if (!ok) return () => {};
+    const ref = path("control/unlockWave");
+    const handler = (snap) => {
+      const v = snap.val();
+      if (v != null) cb(Number(v) || 0);
+    };
+    ref.on("value", handler);
+    return () => ref.off("value", handler);
   }
 
   window.Live = {
@@ -218,6 +239,8 @@
     toState,
     lockDevice,
     unlockDevice,
+    unlockAllDevices,
     isDeviceLocked,
+    onUnlockWave,
   };
 })();
