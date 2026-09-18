@@ -108,9 +108,18 @@
     setTimeout(() => tone(392, 0.45, "triangle", 0.02), 520);
   }
   function soundVote() { tone(720, 0.05, "triangle", 0.018); setTimeout(() => tone(880, 0.07, "sine", 0.014), 35); }
-  function soundWarn() { tone(196, 0.09, "square", 0.03); setTimeout(() => tone(160, 0.1, "square", 0.022), 90); }
+  /** تكت العدّ التنازلي — ناعم طول الوقت، وأوضح شوي في آخر 3 ثوانٍ */
+  function soundTick(left) {
+    if (left <= 3) {
+      tone(520, 0.07, "sine", 0.028);
+      setTimeout(() => tone(390, 0.09, "triangle", 0.022), 55);
+      return;
+    }
+    tone(880, 0.035, "sine", 0.012);
+    setTimeout(() => tone(660, 0.045, "triangle", 0.01), 28);
+  }
 
-  // ستينغ أخبار (~2.8 ث) — مثل جسر نشرات الأخبار، أطول شوي
+  // ستينغ بدء التصويت — حجم مخفّف + احتياط ناعم بدل الموجات الحادة
   const voteGoEl = document.getElementById("vote-go-audio");
   const unlockEl = document.getElementById("audio-unlock");
   let lastGoUntil = 0;
@@ -122,7 +131,7 @@
     try {
       if (!voteGoEl) return false;
       voteGoEl.muted = false;
-      voteGoEl.volume = 1;
+      voteGoEl.volume = 0.42;
       voteGoEl.pause();
       voteGoEl.currentTime = 0;
       const p = voteGoEl.play();
@@ -135,13 +144,12 @@
 
   function soundVoteGo() {
     if (state.muted) return;
-    playVoteGoFile();
-    // احتياط نغمي على شاشة القاعة فقط
-    if (HOST) return;
-    tone(523, 0.1, "square", 0.1);
-    setTimeout(() => tone(659, 0.1, "square", 0.11), 120);
-    setTimeout(() => tone(784, 0.12, "square", 0.12), 240);
-    setTimeout(() => tone(1046, 0.35, "sawtooth", 0.1, 220), 380);
+    const played = playVoteGoFile();
+    // احتياط ناعم على شاشة القاعة فقط إذا الملف ما اشتغل
+    if (HOST || played) return;
+    tone(392, 0.14, "sine", 0.028);
+    setTimeout(() => tone(523, 0.16, "triangle", 0.026), 110);
+    setTimeout(() => tone(659, 0.22, "sine", 0.024), 230);
   }
 
   /** مرة لكل جولة على شاشة العرض — المضيفة تشغّل من زر ابدأ */
@@ -485,7 +493,7 @@
     lastVotes = sum;
     lastCounts = { ...(counts || {}) };
     const left = remaining == null ? 99 : Math.max(0, remaining);
-    if (voting && left <= 3 && left > 0 && left < lastRemain) soundWarn();
+    if (voting && left > 0 && left < lastRemain) soundTick(left);
     lastRemain = left;
     host.classList.toggle("is-ready", ready);
     host.classList.toggle("is-live", voting);
