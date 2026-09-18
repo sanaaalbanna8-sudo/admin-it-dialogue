@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>صوّت | طاولة القرار v-lock4</title>
+  <title>صوّت | طاولة القرار v-lock5</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; }
@@ -81,7 +81,7 @@
     <div class="crest"><img src="img/sands-logo.png" alt="أكاديمية ساندس الوطنية" /></div>
     <div class="brand">طاولة القرار</div>
     <h1>أكاديمية ساندس الوطنية</h1>
-    <p class="meta">اتركوا الصفحة مفتوحة. إطفاء الشاشة بين الجولات مسموح — المغادرة أثناء العدّ التنازلي فقط تحتاج كلمة سر المعلمة.</p>
+    <p class="meta">اتركوا صفحة التصويت مفتوحة. إطفاء الشاشة مسموح — أمّا إغلاق الصفحة أو الخروج منها يقفل التصويت ويحتاج كلمة سر المعلمة.</p>
   </div>
   <div id="app"></div>
   <div class="guard" id="guard" aria-live="assertive">
@@ -97,8 +97,8 @@
   </div>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/firebase-config.js?v=lock4"></script>
-  <script src="js/live.js?v=lock4"></script>
+  <script src="js/firebase-config.js?v=lock5"></script>
+  <script src="js/live.js?v=lock5"></script>
   <script src="js/data.js?v=pin2"></script>
   <script>
     const LETTERS = ["أ", "ب", "ج", "د", "هـ"];
@@ -279,6 +279,8 @@
 
     const LOCK_KEY = "mng-vote-locked";
     const LOCK_COOKIE = "mng_vote_locked";
+    const JOINED_KEY = "mng-vote-joined";
+    const TAB_KEY = "mng-vote-tab";
     const GUEST_KEY = "mng-vote-guest";
     const PIN = String((SHOW.vote && SHOW.vote.pin) || "26788");
     const params = new URLSearchParams(location.search);
@@ -288,17 +290,10 @@
     const guard = document.getElementById("guard");
     const lockErr = document.getElementById("lock-err");
     const lockPin = document.getElementById("lock-pin");
-    let leaveTimer = null;
 
     if (isGuest) {
       const tip = document.querySelector(".top .meta");
       if (tip) tip.textContent = "وضع الضيف: يمكنكم البقاء على الصفحة للتصويت مع الجلسة.";
-    }
-
-    /** التصويت مفتوح والعدّ يشتغل — هون فقط نعتبر المغادرة غش */
-    function isVoteLive() {
-      const d = lastData;
-      return Boolean(d && d.active && d.open && Number(d.remaining || 0) > 0);
     }
 
     function isLockedLocal() {
@@ -331,12 +326,6 @@
       }
     }
 
-    /** فك القفل التلقائي إذا رجعوا وما في عدّ تنازلي حي (إطفاء شاشة / تركيز بالحوار) */
-    function releaseIfIdle() {
-      if (isGuest) return;
-      if (isLockedLocal() && !isVoteLive()) setLocked(false);
-    }
-
     document.getElementById("btn-unlock").onclick = () => {
       if (String(lockPin.value).trim() === PIN) {
         setLocked(false);
@@ -350,55 +339,45 @@
       if (e.key === "Enter") document.getElementById("btn-unlock").click();
     });
 
-    function markLeftSoon() {
-      // إطفاء الشاشة أو تجاهل التلفون بين الجولات = عادي، ما بنقفل
-      if (isGuest || !isVoteLive()) return;
-      clearTimeout(leaveTimer);
-      leaveTimer = setTimeout(() => {
-        if (document.hidden && isVoteLive()) setLocked(true);
-      }, 800);
-    }
-    // إغلاق التبويب أثناء العدّ فقط — pagehide على الموبايل بيصير كمان عند قفل الشاشة
-    function lockOnLeave() {
-      if (isGuest || !isVoteLive()) return;
-      try {
-        localStorage.setItem(LOCK_KEY, "1");
-        sessionStorage.setItem(LOCK_KEY, "1");
-        setCookie(LOCK_COOKIE, "1", 3);
-      } catch { /* ignore */ }
-      if (window.Live && Live.ready()) Live.lockDevice(voter);
-    }
-    document.addEventListener("visibilitychange", () => {
+    /**
+     * إطفاء الشاشة / تجاهل التلفون = ما بنقفل (الصفحة تضل بالذاكرة).
+     * إغلاق الصفحة أو الخروج وعمل سكان من جديد = بنقفل (حتى بين الجولات).
+     * sessionStorage يختفي مع إغلاق التبويب؛ localStorage يضل.
+     * ما منستخدم visibility/pagehide للقفل لأن الموبايل بعتبر إطفاء الشاشة مغادرة.
+     */
+    function applyReturnLock() {
       if (isGuest) return;
-      if (document.hidden) markLeftSoon();
-      else {
-        clearTimeout(leaveTimer);
-        releaseIfIdle();
+      const joinedBefore = localStorage.getItem(JOINED_KEY) === "1";
+      const sameTab = sessionStorage.getItem(TAB_KEY) === "1";
+      if (sameTab) return;
+      sessionStorage.setItem(TAB_KEY, "1");
+      if (joinedBefore) {
+        setLocked(true);
+      } else {
+        // أول دخول — امسحي قفل قديم كان من إطفاء الشاشة بالمنطق السابق
+        if (isLockedLocal()) setLocked(false);
       }
-    });
-    window.addEventListener("pagehide", lockOnLeave);
-    window.addEventListener("beforeunload", lockOnLeave);
+      localStorage.setItem(JOINED_KEY, "1");
+    }
 
     const _paint = paint;
     paint = function (incoming) {
-      if (incoming) lastData = incoming;
-      // انتهى العدّ وهم مقفلين بسبب إطفاء الشاشة سابقاً → افتح تلقائي
-      releaseIfIdle();
       if (isLocked()) {
         guard.classList.add("on");
+        if (incoming) lastData = incoming;
         return;
       }
       _paint(incoming);
     };
 
     (async () => {
+      applyReturnLock();
       if (!isGuest && window.Live) {
         try {
           await Live.init();
           if (await Live.isDeviceLocked(voter)) setLocked(true);
         } catch { /* offline */ }
       }
-      // القفل القديم من إطفاء الشاشة ينفك بعد أول تحديث للحالة (مو هون قبل معرفة العدّ)
       if (isLocked()) setLocked(true);
       boot();
     })();
