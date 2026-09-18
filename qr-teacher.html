@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR لوحة المعلمة | طاولة القرار</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: Cairo, sans-serif;
+      display: grid; place-items: center; padding: 28px 20px;
+      background: linear-gradient(180deg, #10151e, #07090e); color: #fff8ea; text-align: center;
+    }
+    .card {
+      width: min(560px, 100%);
+      padding: 28px 24px 32px;
+      border-radius: 28px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(201,165,106,.4);
+      box-shadow: 0 18px 48px rgba(0,0,0,.35);
+    }
+    .brand { color: #c9a56a; letter-spacing: .14em; font-weight: 900; font-size: .8rem; }
+    h1 { margin: 10px 0 6px; font-size: clamp(1.4rem, 4vw, 1.9rem); font-weight: 900; }
+    .who {
+      display: inline-block; margin: 8px 0 18px; padding: 8px 16px; border-radius: 999px;
+      background: rgba(184, 58, 47, .18); border: 1px solid rgba(255,143,125,.45);
+      color: #ffb4a8; font-weight: 900;
+    }
+    img {
+      width: min(420px, 85vw); height: auto; border-radius: 20px; background: #fff; padding: 14px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.35);
+    }
+    .url {
+      margin: 18px 0 0; font-size: .78rem; color: #c9b89a; word-break: break-all; direction: ltr;
+    }
+    .hint { margin: 10px 0 0; color: #8fd4d8; font-weight: 800; font-size: .95rem; }
+    @media print {
+      body { background: #fff; color: #111; }
+      .card { box-shadow: none; border-color: #ccc; }
+      .brand, .who { color: #8a2f1f; }
+      .hint { color: #0a5; }
+      .url { color: #444; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">طاولة القرار · أكاديمية ساندس الوطنية</div>
+    <h1>امسحي للوحة المعلمة</h1>
+    <div class="who">خاص بالمعلمة فقط</div>
+    <div>
+      <img
+        src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=https%3A%2F%2Fsanaaalbanna8-sudo.github.io%2Fadmin-it-dialogue%2Fvote-teacher.html"
+        alt="QR لوحة المعلمة"
+      />
+    </div>
+    <p class="hint">بعد السكان أدخلي كلمة سر المعلمة</p>
+    <p class="url">https://sanaaalbanna8-sudo.github.io/admin-it-dialogue/vote-teacher.html</p>
+  </div>
+</body>
+</html>

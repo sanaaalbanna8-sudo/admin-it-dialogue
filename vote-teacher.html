@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>لوحة المعلمة | تصويت طاولة القرار</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; font-family: Cairo, sans-serif;
+      background:
+        radial-gradient(70% 45% at 10% 0%, rgba(201,165,106,.2), transparent 55%),
+        linear-gradient(180deg, #121822, #080a10);
+      color: #fff8ea; padding: 22px 16px 40px;
+    }
+    .wrap { width: min(720px, 100%); margin: 0 auto; }
+    .brand { color: #c9a56a; letter-spacing: .14em; font-weight: 900; font-size: .78rem; }
+    h1 { margin: 8px 0 6px; font-size: clamp(1.35rem, 4vw, 1.8rem); font-weight: 900; }
+    .sub { color: #c9b89a; font-weight: 700; line-height: 1.7; margin: 0 0 22px; }
+    .gate, .dash {
+      border-radius: 24px; padding: 22px 18px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(201,165,106,.35);
+      box-shadow: 0 16px 40px rgba(0,0,0,.28);
+    }
+    .gate[hidden], .dash[hidden] { display: none !important; }
+    .gate label { display: block; font-weight: 800; margin-bottom: 10px; }
+    .gate input {
+      width: 100%; max-width: 280px; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid rgba(201,165,106,.45); background: #121722; color: #fff8ea;
+      font: inherit; font-weight: 800; text-align: center; letter-spacing: .18em;
+    }
+    .gate button, .unlock {
+      margin-top: 12px; border: 0; border-radius: 14px; padding: 12px 18px;
+      font: inherit; font-weight: 900; cursor: pointer;
+      background: linear-gradient(135deg, #c9a56a, #e0b34a); color: #1a1208;
+    }
+    .err { color: #ff8f7d; font-weight: 800; min-height: 1.3em; margin: 8px 0 0; }
+    .stats {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px;
+    }
+    .stat {
+      border-radius: 18px; padding: 16px 14px;
+      background: rgba(0,0,0,.22); border: 1px solid rgba(255,248,234,.1);
+    }
+    .stat strong {
+      display: block; font-size: clamp(2rem, 8vw, 2.6rem); font-weight: 900; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat span { display: block; margin-top: 8px; color: #c9b89a; font-weight: 800; font-size: .92rem; }
+    .stat.is-ok strong { color: #8fd4d8; }
+    .stat.is-warn strong { color: #e8c56a; }
+    .stat.is-bad strong { color: #ff8f7d; }
+    .stat.is-soft strong { color: #fff8ea; }
+    .unlock {
+      width: 100%; padding: 16px 18px; font-size: 1.1rem;
+      background: linear-gradient(135deg, #b83a2f, #e05a45); color: #fff8ea;
+    }
+    .unlock:disabled { opacity: .6; cursor: wait; }
+    .hint { margin: 14px 0 0; color: #8fd4d8; font-weight: 800; line-height: 1.7; }
+    .live { display: flex; align-items: center; gap: 8px; color: #c9b89a; font-weight: 800; margin-bottom: 14px; }
+    .live i {
+      width: 10px; height: 10px; border-radius: 50%; background: #3ecf8e;
+      box-shadow: 0 0 0 4px rgba(62,207,142,.18); animation: pulse 1.4s ease infinite;
+    }
+    @keyframes pulse { 50% { transform: scale(1.15); opacity: .7; } }
+    @media (max-width: 520px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">طاولة القرار · للمعلمة فقط</div>
+    <h1>لوحة متابعة التصويت</h1>
+    <p class="sub">شوفي كم تلفون على صفحة التصويت، وكم مقفول، وافتحي الكل بضغطة واحدة بين الجولات.</p>
+
+    <section class="gate" id="gate">
+      <label for="pin">كلمة سر المعلمة</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="•••••" />
+      <div>
+        <button type="button" id="btn-enter">دخول</button>
+      </div>
+      <p class="err" id="gate-err"></p>
+    </section>
+
+    <section class="dash" id="dash" hidden>
+      <div class="live"><i></i> تحديث مباشر</div>
+      <div class="stats">
+        <div class="stat is-soft">
+          <strong id="n-connected">٠</strong>
+          <span>تلفونات متصلة الآن</span>
+        </div>
+        <div class="stat is-ok">
+          <strong id="n-onvote">٠</strong>
+          <span>فاتحة شاشة التصويت</span>
+        </div>
+        <div class="stat is-bad">
+          <strong id="n-locked">٠</strong>
+          <span>مسكّرة (طلعت من التصويت)</span>
+        </div>
+        <div class="stat is-warn">
+          <strong id="n-bg">٠</strong>
+          <span>بالخلفية قبل ما تنقفل</span>
+        </div>
+      </div>
+      <button type="button" class="unlock" id="btn-unlock-all">فتح الكل</button>
+      <p class="hint" id="status">اضغطي «فتح الكل» قبل كل جولة إذا في أجهزة مقفلة.</p>
+    </section>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js?v=lock7"></script>
+  <script src="js/live.js?v=live3"></script>
+  <script src="js/data.js?v=pin2"></script>
+  <script>
+    const PIN = String((SHOW.vote && SHOW.vote.pin) || "26788");
+    const AUTH_KEY = "mng-teacher-ok";
+    const gate = document.getElementById("gate");
+    const dash = document.getElementById("dash");
+    const gateErr = document.getElementById("gate-err");
+    const pinEl = document.getElementById("pin");
+    const statusEl = document.getElementById("status");
+    const btnAll = document.getElementById("btn-unlock-all");
+
+    const ar = (n) => String(n);
+
+    function paintStats(s) {
+      document.getElementById("n-connected").textContent = ar(s.connected || 0);
+      document.getElementById("n-onvote").textContent = ar(s.onVote || 0);
+      document.getElementById("n-locked").textContent = ar(s.locked || 0);
+      document.getElementById("n-bg").textContent = ar(s.background || 0);
+    }
+
+    function openDash() {
+      sessionStorage.setItem(AUTH_KEY, "1");
+      gate.hidden = true;
+      dash.hidden = false;
+      startLive();
+    }
+
+    async function startLive() {
+      try {
+        await Live.init();
+        if (!Live.ready()) {
+          statusEl.textContent = "تعذّر الاتصال — تأكدوا من إعدادات Firebase.";
+          return;
+        }
+        Live.onRoomStats(paintStats);
+      } catch {
+        statusEl.textContent = "تعذّر الاتصال المباشر.";
+      }
+    }
+
+    document.getElementById("btn-enter").onclick = () => {
+      if (String(pinEl.value).trim() === PIN) {
+        gateErr.textContent = "";
+        openDash();
+      } else {
+        gateErr.textContent = "كلمة السر غير صحيحة";
+        pinEl.value = "";
+        pinEl.focus();
+      }
+    };
+    pinEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("btn-enter").click();
+    });
+
+    btnAll.onclick = async () => {
+      btnAll.disabled = true;
+      const old = btnAll.textContent;
+      btnAll.textContent = "جاري الفتح…";
+      try {
+        if (!Live.ready()) await Live.init();
+        await Live.unlockAllDevices();
+        statusEl.textContent = "تم إرسال فتح الكل لكل التلفونات.";
+        btnAll.textContent = "تم ✓";
+      } catch {
+        statusEl.textContent = "حصل خطأ — حاولوا مرة ثانية.";
+        btnAll.textContent = old;
+      }
+      setTimeout(() => {
+        btnAll.textContent = old;
+        btnAll.disabled = false;
+      }, 1600);
+    };
+
+    if (sessionStorage.getItem(AUTH_KEY) === "1") openDash();
+  </script>
+</body>
+</html>

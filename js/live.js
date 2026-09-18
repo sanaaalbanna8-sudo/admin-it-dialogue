@@ -212,7 +212,63 @@
     }
   }
 
-  /** استمع لموجة «فتح الكل» من المضيفة */
+  /** نبضة حضور من شاشة التصويت — visible = على الصفحة، locked = مقفلة محلياً */
+  function touchPresence(id, state) {
+    if (!ok || !id) return Promise.resolve();
+    const ref = path(`devicePresence/${id}`);
+    ref.onDisconnect().remove().catch(() => {});
+    return ref.set({
+      visible: state.visible !== false,
+      locked: Boolean(state.locked),
+      ts: firebase.database.ServerValue.TIMESTAMP,
+    });
+  }
+
+  function clearPresence(id) {
+    if (!ok || !id) return Promise.resolve();
+    return path(`devicePresence/${id}`).remove();
+  }
+
+  function summarizeRoom(presenceVal, locksVal) {
+    const presence = presenceVal && typeof presenceVal === "object" ? presenceVal : {};
+    const locks = locksVal && typeof locksVal === "object" ? locksVal : {};
+    const now = Date.now();
+    const STALE_MS = 45000;
+    let connected = 0;
+    let onVote = 0;
+    let background = 0;
+    Object.keys(presence).forEach((id) => {
+      const p = presence[id] || {};
+      const ts = Number(p.ts || 0);
+      if (ts && now - ts > STALE_MS) return;
+      connected += 1;
+      const isLocked = Boolean(p.locked) || Boolean(locks[id] && locks[id].locked);
+      if (isLocked) return;
+      if (p.visible) onVote += 1;
+      else background += 1;
+    });
+    const locked = Object.keys(locks).filter((id) => locks[id] && locks[id].locked).length;
+    return { connected, onVote, background, locked };
+  }
+
+  function onRoomStats(cb) {
+    if (!ok) return () => {};
+    const pref = path("devicePresence");
+    const lref = path("deviceLocks");
+    let presence = {};
+    let locks = {};
+    const emit = () => cb(summarizeRoom(presence, locks));
+    const onP = (snap) => { presence = snap.val() || {}; emit(); };
+    const onL = (snap) => { locks = snap.val() || {}; emit(); };
+    pref.on("value", onP);
+    lref.on("value", onL);
+    return () => {
+      pref.off("value", onP);
+      lref.off("value", onL);
+    };
+  }
+
+  /** استمع لموجة «فتح الكل» من صفحة المعلمة */
   function onUnlockWave(cb) {
     if (!ok) return () => {};
     const ref = path("control/unlockWave");
@@ -242,5 +298,8 @@
     unlockAllDevices,
     isDeviceLocked,
     onUnlockWave,
+    touchPresence,
+    clearPresence,
+    onRoomStats,
   };
 })();

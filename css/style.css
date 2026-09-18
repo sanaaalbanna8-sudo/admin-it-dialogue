@@ -91,16 +91,7 @@ body {
 }
 body.is-host .role-chip { background: rgba(184, 134, 42, 0.16); color: var(--admin); }
 body.is-follow .dock,
-body.is-follow [data-open-map],
-body.is-follow [data-unlock-all],
-body:not(.is-host) [data-unlock-all] { display: none; }
-[data-unlock-all] {
-  font-weight: 800;
-  color: #8a2f1f;
-  border-color: rgba(138, 47, 31, 0.35);
-  background: rgba(255, 107, 90, 0.12);
-}
-[data-unlock-all]:hover { filter: brightness(1.06); }
+body.is-follow [data-open-map] { display: none; }
 .top-tools time { font-variant-numeric: tabular-nums; color: var(--admin); }
 .icon-btn {
   width: 42px;
